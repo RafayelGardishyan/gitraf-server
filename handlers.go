@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"log"
@@ -9,6 +10,10 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer/html"
 )
 
 // Server holds the application state
@@ -17,6 +22,7 @@ type Server struct {
 	publicURL  string
 	tailnetURL string
 	templates  *template.Template
+	markdown   goldmark.Markdown
 }
 
 // NewServer creates a new Server instance
@@ -95,11 +101,29 @@ func NewServer(reposPath, publicURL, tailnetURL, templatesPath string) (*Server,
 		return nil, err
 	}
 
+	// Create markdown parser with extensions
+	md := goldmark.New(
+		goldmark.WithExtensions(
+			extension.GFM, // GitHub Flavored Markdown
+			extension.Table,
+			extension.Strikethrough,
+			extension.TaskList,
+		),
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+		),
+		goldmark.WithRendererOptions(
+			html.WithHardWraps(),
+			html.WithUnsafe(), // Allow raw HTML in markdown
+		),
+	)
+
 	return &Server{
 		reposPath:  reposPath,
 		publicURL:  publicURL,
 		tailnetURL: tailnetURL,
 		templates:  tmpl,
+		markdown:   md,
 	}, nil
 }
 
@@ -120,6 +144,33 @@ func (s *Server) renderTemplate(w http.ResponseWriter, name string, data interfa
 		log.Printf("Template error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
+}
+
+// renderMarkdown converts markdown to HTML
+func (s *Server) renderMarkdown(source []byte) template.HTML {
+	var buf bytes.Buffer
+	if err := s.markdown.Convert(source, &buf); err != nil {
+		return template.HTML("<p>Error rendering markdown</p>")
+	}
+	return template.HTML(buf.String())
+}
+
+// findReadme looks for a README file in the given tree entries
+func findReadme(entries []TreeEntry) string {
+	readmeNames := []string{
+		"README.md", "readme.md", "Readme.md",
+		"README.MD", "README", "readme",
+		"README.txt", "readme.txt",
+		"README.rst", "readme.rst",
+	}
+	for _, name := range readmeNames {
+		for _, entry := range entries {
+			if !entry.IsDir && entry.Name == name {
+				return entry.Name
+			}
+		}
+	}
+	return ""
 }
 
 // handleIndex shows the list of repositories
@@ -215,6 +266,26 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Look for README file in current directory
+	var readmeHTML template.HTML
+	var readmeName string
+	if readme := findReadme(entries); readme != "" {
+		readmeName = readme
+		readmePath := readme
+		if path != "" && path != "/" {
+			readmePath = filepath.Join(strings.Trim(path, "/"), readme)
+		}
+		if content, err := GetBlob(s.reposPath, repoName, ref, readmePath); err == nil {
+			// Check if it's a markdown file
+			if strings.HasSuffix(strings.ToLower(readme), ".md") {
+				readmeHTML = s.renderMarkdown(content)
+			} else {
+				// For non-markdown README files, show as preformatted text
+				readmeHTML = template.HTML("<pre>" + template.HTMLEscapeString(string(content)) + "</pre>")
+			}
+		}
+	}
+
 	data := map[string]interface{}{
 		"Title":       repoName,
 		"RepoName":    repoName,
@@ -227,6 +298,8 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 		"IsPublic":    IsPublicRepo(repoPath),
 		"PublicURL":   s.publicURL,
 		"TailnetURL":  s.tailnetURL,
+		"ReadmeHTML":  readmeHTML,
+		"ReadmeName":  readmeName,
 	}
 
 	s.renderTemplate(w, "repo.html", data)
@@ -344,4 +417,12 @@ func (s *Server) handleCommits(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, "commits.html", data)
+}
+
+// handleRobots returns robots.txt that disallows all crawlers
+func (s *Server) handleRobots(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(`User-agent: *
+Disallow: /
+`))
 }

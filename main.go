@@ -85,6 +85,7 @@ func main() {
 	r.Use(middleware.RealIP)
 
 	// Routes
+	r.Get("/robots.txt", server.handleRobots)
 	r.Get("/", server.handleIndex)
 	r.Get("/{repo}", server.handleRepo)
 	r.Get("/{repo}/tree/{ref}/*", server.handleTree)

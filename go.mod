@@ -1,10 +1,13 @@
 module gitraf-server
 
-go 1.21
+go 1.22
+
+toolchain go1.24.0
 
 require (
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-git/go-git/v5 v5.11.0
+	github.com/yuin/goldmark v1.7.16
 )
 
 require (

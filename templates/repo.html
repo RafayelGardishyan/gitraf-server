@@ -70,6 +70,20 @@
         </table>
     </div>
 
+    {{if .ReadmeHTML}}
+    <div class="card" style="margin-top: 16px;">
+        <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="color: var(--text-secondary);">
+                <path d="M0 1.75A.75.75 0 0 1 .75 1h4.253c1.227 0 2.317.59 3 1.501A3.743 3.743 0 0 1 11.006 1h4.245a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75h-4.507a2.25 2.25 0 0 0-1.591.659l-.622.621a.75.75 0 0 1-1.06 0l-.622-.621A2.25 2.25 0 0 0 5.258 13H.75a.75.75 0 0 1-.75-.75Zm7.251 10.324.004-5.073-.002-2.253A2.25 2.25 0 0 0 5.003 2.5H1.5v9h3.757a3.75 3.75 0 0 1 1.994.574ZM8.755 4.75l-.004 7.322a3.752 3.752 0 0 1 1.992-.572H14.5v-9h-3.495a2.25 2.25 0 0 0-2.25 2.25Z"/>
+            </svg>
+            <span style="font-weight: 500;">{{.ReadmeName}}</span>
+        </div>
+        <div class="markdown-body" style="padding: 16px;">
+            {{.ReadmeHTML}}
+        </div>
+    </div>
+    {{end}}
+
     <div style="margin-top: 24px; padding: 16px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px;">
         <h3 style="font-size: 14px; margin-bottom: 12px;">Clone</h3>
         {{if .IsTailnet}}
