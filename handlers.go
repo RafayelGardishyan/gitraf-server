@@ -110,10 +110,7 @@ func (s *Server) isTailnetRequest(r *http.Request) bool {
 		r.Header.Get("X-Forwarded-For"),
 		r.Header.Get("X-Real-IP"),
 	)
-	isTailnet := IsTailnetIP(clientIP)
-	log.Printf("IP check: RemoteAddr=%s, X-Forwarded-For=%s, X-Real-IP=%s, ClientIP=%s, IsTailnet=%v",
-		r.RemoteAddr, r.Header.Get("X-Forwarded-For"), r.Header.Get("X-Real-IP"), clientIP, isTailnet)
-	return isTailnet
+	return IsTailnetIP(clientIP)
 }
 
 // renderTemplate renders a template with the given data
