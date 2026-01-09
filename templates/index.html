@@ -1,0 +1,64 @@
+{{template "head" .}}
+
+<main class="container">
+    <h1 style="margin-bottom: 24px; font-size: 24px;">Repositories</h1>
+
+    {{if .Repos}}
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: var(--bg-secondary);">
+                    <th style="text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border);">Name</th>
+                    <th style="text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border);">Description</th>
+                    <th style="text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border);">Visibility</th>
+                    <th style="text-align: right; padding: 12px 16px; border-bottom: 1px solid var(--border);">Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Repos}}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 12px 16px;">
+                        <a href="/{{.Name}}" style="font-weight: 600;">{{.Name}}</a>
+                    </td>
+                    <td style="padding: 12px 16px; color: var(--text-secondary);">
+                        {{if .Description}}{{.Description}}{{else}}-{{end}}
+                    </td>
+                    <td style="padding: 12px 16px;">
+                        {{if .IsPublic}}
+                        <span class="badge badge-public">public</span>
+                        {{else}}
+                        <span class="badge badge-private">private</span>
+                        {{end}}
+                    </td>
+                    <td style="padding: 12px 16px; text-align: right; color: var(--text-secondary);">
+                        {{if not .LastCommit.IsZero}}
+                        {{.LastCommit.Format "Jan 2, 2006"}}
+                        {{else}}
+                        -
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: 48px; color: var(--text-secondary);">
+        <p>No repositories found.</p>
+        {{if not .IsTailnet}}
+        <p style="margin-top: 8px; font-size: 13px;">Connect via tailnet to see private repositories.</p>
+        {{end}}
+    </div>
+    {{end}}
+
+    <div class="status-bar" style="margin-top: 16px;">
+        {{len .Repos}} repositories
+        {{if .IsTailnet}}
+        (showing all)
+        {{else}}
+        (showing public only)
+        {{end}}
+    </div>
+</main>
+
+{{template "footer" .}}

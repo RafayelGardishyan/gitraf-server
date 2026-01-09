@@ -1,0 +1,11 @@
+# Binary
+gitraf-server
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store

@@ -1,0 +1,188 @@
+{{define "head"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - gitraf</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --text: #24292f;
+            --text-secondary: #57606a;
+            --border: #d0d7de;
+            --link: #0969da;
+            --success: #1a7f37;
+            --code-bg: #f6f8fa;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0d1117;
+                --bg-secondary: #161b22;
+                --text: #c9d1d9;
+                --text-secondary: #8b949e;
+                --border: #30363d;
+                --link: #58a6ff;
+                --success: #3fb950;
+                --code-bg: #161b22;
+            }
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+        }
+        a {
+            color: var(--link);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+            margin-bottom: 24px;
+        }
+        header .container {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 0 16px;
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .logo:hover {
+            text-decoration: none;
+        }
+        nav {
+            display: flex;
+            gap: 16px;
+        }
+        nav a {
+            color: var(--text-secondary);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        nav a:hover {
+            background: var(--border);
+            text-decoration: none;
+        }
+        nav a.active {
+            color: var(--text);
+            font-weight: 500;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .badge-public {
+            background: rgba(26, 127, 55, 0.15);
+            color: var(--success);
+        }
+        .badge-private {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .badge-tailnet {
+            background: rgba(89, 166, 255, 0.15);
+            color: var(--link);
+        }
+        code, pre {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 13px;
+        }
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+        }
+        .card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .card-header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 12px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: var(--border);
+            text-decoration: none;
+        }
+        select {
+            padding: 5px 8px;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text);
+        }
+        .status-bar {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="/" class="logo">gitraf</a>
+            {{if .IsTailnet}}
+            <span class="badge badge-tailnet">tailnet</span>
+            {{end}}
+        </div>
+    </header>
+{{end}}
+
+{{define "footer"}}
+    <footer style="margin-top: 48px; padding: 24px 0; border-top: 1px solid var(--border); text-align: center; color: var(--text-secondary); font-size: 12px;">
+        <div class="container">
+            gitraf - git repository viewer
+        </div>
+    </footer>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,60 @@
+{{template "head" .}}
+
+<main class="container">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <h1 style="font-size: 20px;">
+            <a href="/" style="color: var(--text-secondary);">repos</a>
+            <span style="color: var(--text-secondary); margin: 0 4px;">/</span>
+            <a href="/{{.RepoName}}">{{.RepoName}}</a>
+        </h1>
+        {{if .IsPublic}}
+        <span class="badge badge-public">public</span>
+        {{else}}
+        <span class="badge badge-private">private</span>
+        {{end}}
+    </div>
+
+    <nav style="display: flex; gap: 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px;">
+        <a href="/{{.RepoName}}/tree/{{.Ref}}/" style="padding: 8px 0; color: var(--text-secondary);">
+            Files
+        </a>
+        <a href="/{{.RepoName}}/commits/{{.Ref}}" class="active" style="padding: 8px 0; border-bottom: 2px solid var(--link); margin-bottom: -1px;">
+            Commits
+        </a>
+    </nav>
+
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <select onchange="window.location.href='/{{.RepoName}}/commits/' + this.value">
+            {{range .Branches}}
+            <option value="{{.}}" {{if eq . $.Ref}}selected{{end}}>{{.}}</option>
+            {{end}}
+        </select>
+        <span style="color: var(--text-secondary);">{{len .Commits}} commits</span>
+    </div>
+
+    <div class="card">
+        {{range .Commits}}
+        <div style="padding: 16px; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 500; margin-bottom: 4px;">
+                        {{firstLine .Message}}
+                    </div>
+                    <div style="font-size: 13px; color: var(--text-secondary);">
+                        <span style="font-weight: 500;">{{.Author}}</span>
+                        committed on
+                        {{.Date.Format "Jan 2, 2006"}}
+                    </div>
+                </div>
+                <div style="flex-shrink: 0;">
+                    <code style="padding: 4px 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                        {{.ShortHash}}
+                    </code>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</main>
+
+{{template "footer" .}}

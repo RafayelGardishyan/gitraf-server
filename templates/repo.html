@@ -1,0 +1,90 @@
+{{template "head" .}}
+
+<main class="container">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <h1 style="font-size: 20px;">
+            <a href="/" style="color: var(--text-secondary);">repos</a>
+            <span style="color: var(--text-secondary); margin: 0 4px;">/</span>
+            <a href="/{{.RepoName}}">{{.RepoName}}</a>
+        </h1>
+        {{if .IsPublic}}
+        <span class="badge badge-public">public</span>
+        {{else}}
+        <span class="badge badge-private">private</span>
+        {{end}}
+    </div>
+
+    <nav style="display: flex; gap: 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px;">
+        <a href="/{{.RepoName}}/tree/{{.Ref}}/" class="active" style="padding: 8px 0; border-bottom: 2px solid var(--link); margin-bottom: -1px;">
+            Files
+        </a>
+        <a href="/{{.RepoName}}/commits/{{.Ref}}" style="padding: 8px 0; color: var(--text-secondary);">
+            Commits
+        </a>
+    </nav>
+
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <select onchange="window.location.href='/{{.RepoName}}/tree/' + this.value + '/{{.Path}}'">
+            {{range .Branches}}
+            <option value="{{.}}" {{if eq . $.Ref}}selected{{end}}>{{.}}</option>
+            {{end}}
+        </select>
+
+        <div style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary);">
+            <a href="/{{.RepoName}}/tree/{{.Ref}}/" style="color: var(--text-secondary);">{{.RepoName}}</a>
+            {{range .Breadcrumbs}}
+            <span>/</span>
+            {{if .Path}}
+            <a href="/{{$.RepoName}}/tree/{{$.Ref}}/{{.Path}}" style="color: var(--text-secondary);">{{.Name}}</a>
+            {{else}}
+            <span style="color: var(--text);">{{.Name}}</span>
+            {{end}}
+            {{end}}
+        </div>
+    </div>
+
+    <div class="card">
+        <table style="width: 100%; border-collapse: collapse;">
+            {{range .Entries}}
+            <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 8px 16px; width: 24px;">
+                    {{if .IsDir}}
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="color: var(--link);">
+                        <path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z"/>
+                    </svg>
+                    {{else}}
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="color: var(--text-secondary);">
+                        <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z"/>
+                    </svg>
+                    {{end}}
+                </td>
+                <td style="padding: 8px 16px;">
+                    {{if .IsDir}}
+                    <a href="/{{$.RepoName}}/tree/{{$.Ref}}/{{if $.Path}}{{$.Path}}/{{end}}{{.Name}}">{{.Name}}</a>
+                    {{else}}
+                    <a href="/{{$.RepoName}}/blob/{{$.Ref}}/{{if $.Path}}{{$.Path}}/{{end}}{{.Name}}">{{.Name}}</a>
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+        </table>
+    </div>
+
+    <div style="margin-top: 24px; padding: 16px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px;">
+        <h3 style="font-size: 14px; margin-bottom: 12px;">Clone</h3>
+        {{if .IsTailnet}}
+        <div style="margin-bottom: 8px;">
+            <code style="font-size: 13px; color: var(--text-secondary);">SSH (read/write)</code>
+        </div>
+        <pre style="margin: 0; padding: 8px 12px;">git clone git@{{.TailnetURL}}:{{.RepoName}}.git</pre>
+        {{end}}
+        {{if .IsPublic}}
+        <div style="margin-top: 12px; margin-bottom: 8px;">
+            <code style="font-size: 13px; color: var(--text-secondary);">HTTPS (read-only)</code>
+        </div>
+        <pre style="margin: 0; padding: 8px 12px;">git clone {{.PublicURL}}/{{.RepoName}}.git</pre>
+        {{end}}
+    </div>
+</main>
+
+{{template "footer" .}}
