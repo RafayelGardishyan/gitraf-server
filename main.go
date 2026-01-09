@@ -16,6 +16,9 @@ func main() {
 	// Parse command line flags
 	reposPath := flag.String("repos", "", "Path to git repositories directory")
 	port := flag.Int("port", 8080, "Port to listen on")
+	tlsPort := flag.Int("tls-port", 0, "TLS port to listen on (0 to disable)")
+	tlsCert := flag.String("tls-cert", "", "Path to TLS certificate")
+	tlsKey := flag.String("tls-key", "", "Path to TLS private key")
 	publicURL := flag.String("public-url", "", "Public URL for HTTPS clone")
 	tailnetURL := flag.String("tailnet-url", "", "Tailnet URL for SSH clone")
 	templatesPath := flag.String("templates", "", "Path to templates directory (defaults to ./templates)")
@@ -98,6 +101,17 @@ func main() {
 	}
 	if *tailnetURL != "" {
 		log.Printf("Tailnet URL: %s", *tailnetURL)
+	}
+
+	// Start TLS server if configured
+	if *tlsPort > 0 && *tlsCert != "" && *tlsKey != "" {
+		tlsAddr := fmt.Sprintf(":%d", *tlsPort)
+		log.Printf("Starting TLS server on %s", tlsAddr)
+		go func() {
+			if err := http.ListenAndServeTLS(tlsAddr, *tlsCert, *tlsKey, r); err != nil {
+				log.Printf("TLS server error: %v", err)
+			}
+		}()
 	}
 
 	if err := http.ListenAndServe(addr, r); err != nil {
