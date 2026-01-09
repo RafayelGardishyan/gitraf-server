@@ -72,20 +72,17 @@ func ListRepos(reposPath string, showPrivate bool) ([]Repo, error) {
 			IsPublic: isPublic,
 		}
 
-		// Try to get description
-		descPath := filepath.Join(repoPath, "description")
-		if data, err := os.ReadFile(descPath); err == nil {
-			desc := strings.TrimSpace(string(data))
-			if desc != "Unnamed repository; edit this file 'description' to name the repository." {
-				repo.Description = desc
-			}
-		}
-
-		// Try to get last commit time
+		// Try to get last commit time and use commit message as description
 		if r, err := git.PlainOpen(repoPath); err == nil {
 			if head, err := r.Head(); err == nil {
 				if commit, err := r.CommitObject(head.Hash()); err == nil {
 					repo.LastCommit = commit.Author.When
+					// Use first line of commit message as description
+					msg := strings.TrimSpace(commit.Message)
+					if idx := strings.Index(msg, "\n"); idx != -1 {
+						msg = msg[:idx]
+					}
+					repo.Description = msg
 				}
 			}
 		}
