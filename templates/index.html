@@ -1,6 +1,19 @@
 {{template "head" .}}
 
 <main class="container">
+    <!-- Project Description Section -->
+    <div class="card" style="margin-bottom: 24px; padding: 24px;">
+        <h2 style="margin-bottom: 12px; font-size: 18px;">About gitraf</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 12px;">
+            A lightweight, self-hosted git server. Simple, fast, and free from corporate control.
+        </p>
+        <p style="color: var(--text-secondary); font-size: 13px;">
+            This project is maintained by a single developer and is provided as-is.
+            While care is taken to ensure stability, bugs may exist.
+            <a href="https://github.com/RafayelGardishyan/gitraf" target="_blank">Contributions are always welcome!</a>
+        </p>
+    </div>
+
     <h1 style="margin-bottom: 24px; font-size: 24px;">Repositories</h1>
 
     {{if .Repos}}
