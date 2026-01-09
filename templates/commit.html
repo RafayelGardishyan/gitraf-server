@@ -1,0 +1,211 @@
+{{template "head" .}}
+
+<style>
+    .diff-file {
+        margin-bottom: 16px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .diff-file-header {
+        padding: 8px 12px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .diff-file-name {
+        font-family: monospace;
+        font-size: 13px;
+    }
+    .diff-stats {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+    .diff-stats .additions {
+        color: #3fb950;
+    }
+    .diff-stats .deletions {
+        color: #f85149;
+    }
+    .diff-content {
+        overflow-x: auto;
+    }
+    .diff-line {
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        white-space: pre;
+        padding: 0 8px;
+        border-left: 3px solid transparent;
+    }
+    .diff-line .sign {
+        display: inline-block;
+        width: 12px;
+        user-select: none;
+        color: inherit;
+    }
+    .diff-line.add {
+        background: rgba(46, 160, 67, 0.15);
+        border-left-color: #3fb950;
+    }
+    .diff-line.add .sign {
+        color: #3fb950;
+    }
+    .diff-line.delete {
+        background: rgba(248, 81, 73, 0.15);
+        border-left-color: #f85149;
+    }
+    .diff-line.delete .sign {
+        color: #f85149;
+    }
+    .diff-line.context {
+        background: var(--bg);
+    }
+    .status-badge {
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+    .status-added {
+        background: rgba(46, 160, 67, 0.2);
+        color: #3fb950;
+    }
+    .status-modified {
+        background: rgba(210, 153, 34, 0.2);
+        color: #d29922;
+    }
+    .status-deleted {
+        background: rgba(248, 81, 73, 0.2);
+        color: #f85149;
+    }
+    .status-renamed {
+        background: rgba(130, 80, 223, 0.2);
+        color: #a371f7;
+    }
+</style>
+
+<main class="container">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <h1 style="font-size: 20px;">
+            <a href="/" style="color: var(--text-secondary);">repos</a>
+            <span style="color: var(--text-secondary); margin: 0 4px;">/</span>
+            <a href="/{{.RepoName}}">{{.RepoName}}</a>
+        </h1>
+        {{if .IsPublic}}
+        <span class="badge badge-public">public</span>
+        {{else}}
+        <span class="badge badge-private">private</span>
+        {{end}}
+    </div>
+
+    <nav style="display: flex; gap: 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px;">
+        <a href="/{{.RepoName}}/tree/{{.Ref}}/" style="padding: 8px 0; color: var(--text-secondary);">
+            Files
+        </a>
+        <a href="/{{.RepoName}}/commits/{{.Ref}}" class="active" style="padding: 8px 0; border-bottom: 2px solid var(--link); margin-bottom: -1px;">
+            Commits
+        </a>
+    </nav>
+
+    <!-- Commit Header -->
+    <div class="card" style="margin-bottom: 16px;">
+        <div style="padding: 20px;">
+            <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+                <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor" style="color: var(--link); flex-shrink: 0; margin-top: 2px;">
+                    <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"/>
+                </svg>
+                <div style="flex: 1; min-width: 0;">
+                    <h2 style="font-size: 18px; margin-bottom: 8px; word-break: break-word;">
+                        {{firstLine .CommitDiff.Commit.Message}}
+                    </h2>
+                    <div style="color: var(--text-secondary); font-size: 14px;">
+                        <span style="font-weight: 500; color: var(--text);">{{.CommitDiff.Commit.Author}}</span>
+                        committed on {{.CommitDiff.Commit.Date.Format "Jan 2, 2006 at 15:04"}}
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 13px;">Commit</span>
+                    <code style="padding: 4px 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; font-size: 12px;">
+                        {{.CommitDiff.Commit.Hash}}
+                    </code>
+                </div>
+                {{if .CommitDiff.ParentHash}}
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--text-secondary); font-size: 13px;">Parent</span>
+                    <a href="/{{.RepoName}}/commit/{{.CommitDiff.ParentHash}}" style="padding: 4px 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: monospace; text-decoration: none;">
+                        {{.CommitDiff.ParentHash}}
+                    </a>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Diff Stats Summary -->
+    <div class="card" style="margin-bottom: 16px; padding: 16px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center;">
+            <div>
+                <span style="font-weight: 500;">{{.CommitDiff.Stats.FilesChanged}}</span>
+                <span style="color: var(--text-secondary);"> file{{if ne .CommitDiff.Stats.FilesChanged 1}}s{{end}} changed</span>
+            </div>
+            <div>
+                <span style="font-weight: 500; color: #3fb950;">+{{.CommitDiff.Stats.Additions}}</span>
+                <span style="color: var(--text-secondary);"> addition{{if ne .CommitDiff.Stats.Additions 1}}s{{end}}</span>
+            </div>
+            <div>
+                <span style="font-weight: 500; color: #f85149;">-{{.CommitDiff.Stats.Deletions}}</span>
+                <span style="color: var(--text-secondary);"> deletion{{if ne .CommitDiff.Stats.Deletions 1}}s{{end}}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Changes -->
+    {{range .CommitDiff.Files}}
+    <div class="diff-file">
+        <div class="diff-file-header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="status-badge status-{{.Status}}">{{.Status}}</span>
+                <span class="diff-file-name">
+                    {{if .OldName}}
+                    {{.OldName}} → {{.Name}}
+                    {{else}}
+                    {{.Name}}
+                    {{end}}
+                </span>
+            </div>
+            <div class="diff-stats">
+                {{if not .IsBinary}}
+                <span class="additions">+{{.Additions}}</span>
+                <span class="deletions">-{{.Deletions}}</span>
+                {{else}}
+                <span>Binary file</span>
+                {{end}}
+            </div>
+        </div>
+        {{if not .IsBinary}}
+        <div class="diff-content">
+            {{range .Chunks}}
+            {{range .Lines}}
+            <div class="diff-line {{.Type}}"><span class="sign">{{if eq .Type "delete"}}-{{else if eq .Type "add"}}+{{else}} {{end}}</span>{{.Content}}</div>
+            {{end}}
+            {{end}}
+        </div>
+        {{end}}
+    </div>
+    {{end}}
+
+    <div style="margin-top: 24px;">
+        <a href="/{{.RepoName}}/commits/{{.Ref}}" style="color: var(--link);">
+            ← Back to commits
+        </a>
+    </div>
+</main>
+
+{{template "footer" .}}

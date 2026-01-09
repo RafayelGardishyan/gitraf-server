@@ -1,0 +1,795 @@
+{{template "head" .}}
+
+<style>
+    .docs-container {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 32px;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .docs-sidebar {
+        position: sticky;
+        top: 24px;
+        height: fit-content;
+    }
+    .docs-nav {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .docs-nav li {
+        margin-bottom: 4px;
+    }
+    .docs-nav a {
+        display: block;
+        padding: 8px 12px;
+        border-radius: 6px;
+        color: var(--text-secondary);
+        text-decoration: none;
+    }
+    .docs-nav a:hover {
+        background: var(--bg-secondary);
+        color: var(--text);
+    }
+    .docs-nav a.active {
+        background: var(--link);
+        color: white;
+    }
+    .docs-content {
+        min-width: 0;
+    }
+    .docs-content h1 {
+        font-size: 28px;
+        margin-bottom: 24px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+    }
+    .docs-content h2 {
+        font-size: 20px;
+        margin-top: 32px;
+        margin-bottom: 16px;
+    }
+    .docs-content h3 {
+        font-size: 16px;
+        margin-top: 24px;
+        margin-bottom: 12px;
+    }
+    .docs-content p {
+        margin-bottom: 16px;
+        line-height: 1.6;
+    }
+    .docs-content pre {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 16px;
+        overflow-x: auto;
+        margin-bottom: 16px;
+    }
+    .docs-content code {
+        background: var(--bg-secondary);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+    .docs-content pre code {
+        background: none;
+        padding: 0;
+    }
+    .docs-content ul, .docs-content ol {
+        margin-bottom: 16px;
+        padding-left: 24px;
+    }
+    .docs-content li {
+        margin-bottom: 8px;
+        line-height: 1.6;
+    }
+    .docs-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 16px;
+    }
+    .docs-content th, .docs-content td {
+        padding: 12px;
+        border: 1px solid var(--border);
+        text-align: left;
+    }
+    .docs-content th {
+        background: var(--bg-secondary);
+        font-weight: 600;
+    }
+    .warning-box {
+        background: rgba(210, 153, 34, 0.1);
+        border: 1px solid rgba(210, 153, 34, 0.3);
+        border-radius: 6px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+    .warning-box::before {
+        content: "Warning: ";
+        font-weight: 600;
+        color: #d29922;
+    }
+    .info-box {
+        background: rgba(56, 139, 253, 0.1);
+        border: 1px solid rgba(56, 139, 253, 0.3);
+        border-radius: 6px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+    .info-box::before {
+        content: "Note: ";
+        font-weight: 600;
+        color: var(--link);
+    }
+    @media (max-width: 768px) {
+        .docs-container {
+            grid-template-columns: 1fr;
+        }
+        .docs-sidebar {
+            position: static;
+        }
+    }
+</style>
+
+<main class="container">
+    <div class="docs-container">
+        <aside class="docs-sidebar">
+            <h3 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;">Documentation</h3>
+            <ul class="docs-nav">
+                <li><a href="/docs/overview" {{if eq .Section "overview"}}class="active"{{end}}>Overview</a></li>
+                <li><a href="/docs/installation" {{if eq .Section "installation"}}class="active"{{end}}>Installation</a></li>
+                <li><a href="/docs/cli" {{if eq .Section "cli"}}class="active"{{end}}>CLI Reference</a></li>
+                <li><a href="/docs/server" {{if eq .Section "server"}}class="active"{{end}}>Server Setup</a></li>
+                <li><a href="/docs/pages" {{if eq .Section "pages"}}class="active"{{end}}>Pages Hosting</a></li>
+                <li><a href="/docs/lfs" {{if eq .Section "lfs"}}class="active"{{end}}>Git LFS</a></li>
+                <li><a href="/docs/troubleshooting" {{if eq .Section "troubleshooting"}}class="active"{{end}}>Troubleshooting</a></li>
+            </ul>
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <a href="https://github.com/RafayelGardishyan/gitraf-ecosystem" target="_blank" style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px; text-decoration: none;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
+                    </svg>
+                    View on GitHub
+                </a>
+            </div>
+        </aside>
+
+        <div class="docs-content">
+            {{if eq .Section "overview"}}
+            <h1>Overview</h1>
+            <p>
+                <strong>gitraf</strong> is a lightweight, self-hosted git server ecosystem. It provides simple, fast git hosting that's free from corporate control.
+            </p>
+
+            <h2>Architecture</h2>
+            <pre>
++-------------------+     +-------------------+     +-------------------+
+|   gitraf CLI      |---->|   SSH/HTTPS       |---->|   ogit server     |
+|   (client)        |     |                   |     |   (git hosting)   |
++-------------------+     +-------------------+     +-------------------+
+                                                            |
+                          +---------------+-----------------+---------------+
+                          |               |                                 |
+                          v               v                                 v
+                  +---------------+ +---------------+               +---------------+
+                  | gitraf-server | | gitraf-pages  |               |   Git LFS     |
+                  | (web UI)      | | (static sites)|               |   (S3 storage)|
+                  +---------------+ +---------------+               +---------------+
+</pre>
+
+            <h2>Components</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>gitraf</strong></td>
+                        <td>CLI tool for managing repositories from your local machine</td>
+                    </tr>
+                    <tr>
+                        <td><strong>gitraf-server</strong></td>
+                        <td>Web interface for browsing repositories (this page)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>gitraf-pages</strong></td>
+                        <td>Static site hosting from git repositories</td>
+                    </tr>
+                    <tr>
+                        <td><strong>gitraf-deploy</strong></td>
+                        <td>Interactive deployment script for server setup</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>Access Model</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Location</th>
+                        <th>Private Repos</th>
+                        <th>Public Repos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>On Tailnet</td>
+                        <td>SSH read/write</td>
+                        <td>SSH read/write</td>
+                    </tr>
+                    <tr>
+                        <td>External</td>
+                        <td>Not accessible</td>
+                        <td>HTTPS read-only</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {{else if eq .Section "installation"}}
+            <h1>Installation</h1>
+
+            <h2>Quick Start (Server)</h2>
+            <p>Deploy on a fresh Ubuntu server with the interactive script:</p>
+            <pre>curl -sSL https://raw.githubusercontent.com/RafayelGardishyan/gitraf-deploy/main/deploy.sh | sudo bash</pre>
+
+            <p>The script will guide you through:</p>
+            <ul>
+                <li>Choosing components (core only, web UI, or full stack with pages)</li>
+                <li>Selecting access model (tailnet-only, public, or hybrid)</li>
+                <li>Configuring your domain and SSL certificates</li>
+            </ul>
+
+            <h2>CLI Installation</h2>
+            <p>Install the gitraf CLI on your local machine:</p>
+            <pre>git clone https://git.rafayel.dev/gitraf.git
+cd gitraf
+./install.sh</pre>
+
+            <p>Or manually:</p>
+            <pre>git clone https://git.rafayel.dev/gitraf.git
+cd gitraf
+go build -o gitraf .
+sudo mv gitraf /usr/local/bin/</pre>
+
+            <h2>Configuration</h2>
+            <p>Initialize gitraf with your server URLs:</p>
+            <pre>gitraf config init https://git.yourdomain.com yourserver.tail12345.ts.net</pre>
+
+            <h2>Requirements</h2>
+            <ul>
+                <li><strong>Server:</strong> Ubuntu 20.04+ or Debian 11+</li>
+                <li><strong>CLI:</strong> Go 1.21+ for building</li>
+                <li><strong>Tailscale:</strong> Required for private access</li>
+                <li><strong>Domain:</strong> Required for public/hybrid access</li>
+            </ul>
+
+            {{else if eq .Section "cli"}}
+            <h1>CLI Reference</h1>
+
+            <p>The <code>gitraf</code> CLI is your main interface for managing repositories on your self-hosted git server.</p>
+
+            <h2>Installation</h2>
+            <pre># Clone and build
+git clone https://git.rafayel.dev/gitraf.git
+cd gitraf
+go build -o gitraf .
+sudo mv gitraf /usr/local/bin/
+
+# Or use the install script
+./install.sh</pre>
+
+            <h2>Configuration</h2>
+            <p>Before using gitraf, configure it with your server URLs:</p>
+            <pre># Initialize configuration (interactive)
+gitraf config init
+
+# Initialize with specific URLs
+gitraf config init https://git.yourdomain.com yourserver.tail12345.ts.net
+
+# Show current configuration
+gitraf config show
+
+# Set individual values
+gitraf config set public_url https://git.yourdomain.com
+gitraf config set tailnet_url yourserver.tail12345.ts.net
+gitraf config set ssh_user git</pre>
+
+            <p>Configuration is stored in <code>~/.config/gitraf/config.json</code>:</p>
+            <pre>{
+  "public_url": "git.yourdomain.com",
+  "tailnet_url": "yourserver.tail12345.ts.net",
+  "ssh_user": "git"
+}</pre>
+
+            <h2>Repository Management</h2>
+
+            <h3>Listing Repositories</h3>
+            <pre># List all repositories (public + private if on tailnet)
+gitraf list
+
+# Output shows name, visibility, and description
+# Example:
+#   myproject     [public]   A cool project
+#   private-app   [private]  Internal tooling</pre>
+
+            <h3>Repository Information</h3>
+            <pre># Get detailed info about a repository
+gitraf info myrepo
+
+# Shows: clone URLs, visibility, size, last commit</pre>
+
+            <h3>Cloning Repositories</h3>
+            <pre># Clone a repository (auto-selects best protocol)
+gitraf clone myrepo
+
+# On tailnet: uses SSH (git@server:myrepo.git)
+# Off tailnet: uses HTTPS (https://git.domain.com/myrepo.git)
+
+# Clone to specific directory
+gitraf clone myrepo ./my-local-folder</pre>
+
+            <h3>Creating Repositories</h3>
+            <pre># Create a new repository (requires tailnet)
+gitraf create myrepo
+
+# Create with description
+gitraf create myrepo --description "My awesome project"
+
+# Create as private (default) or public
+gitraf create myrepo --public</pre>
+
+            <h3>Deleting Repositories</h3>
+            <pre># Delete a repository (requires tailnet, prompts for confirmation)
+gitraf delete myrepo
+
+# Skip confirmation (dangerous!)
+gitraf delete myrepo --force</pre>
+
+            <h2>Visibility Control</h2>
+            <pre># Make repository publicly accessible via HTTPS
+gitraf public myrepo
+
+# Make repository private (tailnet-only access)
+gitraf private myrepo</pre>
+
+            <div class="info-box">
+                Public repositories can be cloned via HTTPS by anyone.
+                Private repositories require SSH access from the tailnet.
+            </div>
+
+            <h2>Connection Status</h2>
+            <pre># Check connectivity to git server
+gitraf status
+
+# Shows:
+#   - Tailnet connection status
+#   - SSH connectivity
+#   - HTTPS connectivity
+#   - Server version</pre>
+
+            <h2>GitHub Mirror Sync</h2>
+            <p>Automatically mirror your repositories to GitHub for backup or collaboration.</p>
+
+            <h3>Enable Mirroring</h3>
+            <pre># Enable mirroring for a repository
+gitraf mirror enable myrepo git@github.com:username/myrepo.git
+
+# This creates a git-mirror.json config in the repo</pre>
+
+            <h3>Disable Mirroring</h3>
+            <pre># Stop mirroring a repository
+gitraf mirror disable myrepo</pre>
+
+            <h3>List Mirrors</h3>
+            <pre># Show all repositories with mirroring enabled
+gitraf mirror list
+
+# Output:
+#   myrepo        -> github.com:user/myrepo.git
+#   another-repo  -> github.com:user/another.git</pre>
+
+            <h3>Manual Sync</h3>
+            <pre># Sync a specific repository now
+gitraf mirror sync myrepo
+
+# Sync all mirrored repositories
+gitraf mirror sync</pre>
+
+            <h3>Automatic Sync (Cronjob)</h3>
+            <pre># Enable automatic sync via cron
+gitraf mirror cron enable
+
+# Choose schedule:
+#   1. Hourly
+#   2. Every 6 hours
+#   3. Daily (midnight)
+#   4. Custom cron expression
+
+# Disable automatic sync
+gitraf mirror cron disable
+
+# Check cron status
+gitraf mirror status</pre>
+
+            <div class="info-box">
+                For GitHub mirroring to work, your server needs SSH access to GitHub.
+                Add your server's SSH key to your GitHub account.
+            </div>
+
+            <h2>Pages Hosting</h2>
+            <p>Deploy static sites from git repositories.</p>
+
+            <h3>Enable Pages</h3>
+            <pre># Enable pages for a repository
+gitraf pages enable mysite
+
+# Interactive prompts:
+#   Branch: main
+#   Build command: npm run build (optional)
+#   Output directory: public
+
+# Enable with options
+gitraf pages enable mysite --branch main --output dist</pre>
+
+            <h3>Manage Pages</h3>
+            <pre># List all pages-enabled repositories
+gitraf pages list
+
+# Check pages status and build info
+gitraf pages status mysite
+
+# Force rebuild and redeploy
+gitraf pages deploy mysite
+
+# Disable pages
+gitraf pages disable mysite</pre>
+
+            <h3>Build Commands</h3>
+            <p>Common build commands for different frameworks:</p>
+            <table>
+                <thead>
+                    <tr><th>Framework</th><th>Build Command</th><th>Output</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Static HTML</td><td><em>(none)</em></td><td><code>.</code> or <code>public</code></td></tr>
+                    <tr><td>Hugo</td><td><code>hugo</code></td><td><code>public</code></td></tr>
+                    <tr><td>Jekyll</td><td><code>bundle exec jekyll build</code></td><td><code>_site</code></td></tr>
+                    <tr><td>Next.js (static)</td><td><code>npm run build && npm run export</code></td><td><code>out</code></td></tr>
+                    <tr><td>Vite</td><td><code>npm run build</code></td><td><code>dist</code></td></tr>
+                    <tr><td>Astro</td><td><code>npm run build</code></td><td><code>dist</code></td></tr>
+                </tbody>
+            </table>
+
+            <h2>Git LFS</h2>
+            <p>Store large files in S3-compatible storage.</p>
+
+            <h3>Setup</h3>
+            <pre># Interactive LFS setup
+gitraf lfs setup
+
+# Prompts for:
+#   S3 endpoint URL
+#   Bucket name
+#   Access key
+#   Secret key</pre>
+
+            <h3>Status</h3>
+            <pre># Check LFS configuration
+gitraf lfs status
+
+# Shows:
+#   - S3 endpoint
+#   - Bucket name
+#   - Connection status</pre>
+
+            <h2>Authentication</h2>
+            <pre># Set up SSH key for the git server
+gitraf auth setup
+
+# This will:
+#   1. Generate SSH key if needed
+#   2. Copy public key to server
+#   3. Test connection</pre>
+
+            <h2>Updates</h2>
+            <pre># Update gitraf CLI to latest version
+gitraf update
+
+# Check current version
+gitraf --version</pre>
+
+            <h2>Global Flags</h2>
+            <table>
+                <thead>
+                    <tr><th>Flag</th><th>Description</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>-s, --server</code></td><td>Override server URL for this command</td></tr>
+                    <tr><td><code>-h, --help</code></td><td>Show help for any command</td></tr>
+                    <tr><td><code>--version</code></td><td>Show gitraf version</td></tr>
+                </tbody>
+            </table>
+
+            <h2>Examples</h2>
+
+            <h3>Complete Workflow: New Project</h3>
+            <pre># Create repository
+gitraf create my-new-project --description "My awesome app"
+
+# Clone locally
+gitraf clone my-new-project
+cd my-new-project
+
+# Add files and push
+echo "# My Project" > README.md
+git add .
+git commit -m "Initial commit"
+git push origin main
+
+# Make it public
+gitraf public my-new-project
+
+# Enable pages
+gitraf pages enable my-new-project --output public
+
+# Set up GitHub mirror
+gitraf mirror enable my-new-project git@github.com:user/my-new-project.git
+gitraf mirror cron enable</pre>
+
+            <h3>Migrate Existing Repository</h3>
+            <pre># Create repo on gitraf server
+gitraf create existing-project
+
+# In your existing local repo
+git remote add gitraf git@yourserver.ts.net:existing-project.git
+git push gitraf main
+
+# Or replace origin entirely
+git remote set-url origin git@yourserver.ts.net:existing-project.git</pre>
+
+            {{else if eq .Section "server"}}
+            <h1>Server Setup</h1>
+
+            <h2>Manual Installation</h2>
+            <p>If you prefer manual setup over the deployment script:</p>
+
+            <h3>1. Install Dependencies</h3>
+            <pre>apt update
+apt install -y git nginx certbot python3-certbot-nginx</pre>
+
+            <h3>2. Install Tailscale</h3>
+            <pre>curl -fsSL https://tailscale.com/install.sh | sh
+tailscale up</pre>
+
+            <h3>3. Create Git User</h3>
+            <pre>useradd -m -s /bin/bash git
+mkdir -p /opt/ogit/data/repos
+chown -R git:git /opt/ogit</pre>
+
+            <h3>4. Configure SSH</h3>
+            <p>Edit <code>/etc/ssh/sshd_config</code> to allow tailnet IPs:</p>
+            <pre>Match Address 100.64.0.0/10
+    PasswordAuthentication no
+    PubkeyAuthentication yes</pre>
+
+            <h2>Nginx Configuration</h2>
+            <p>For hybrid access (public HTTPS + tailnet SSH):</p>
+            <pre>server {
+    listen 443 ssl;
+    server_name git.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/git.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/git.yourdomain.com/privkey.pem;
+
+    # Block push from non-tailnet IPs
+    location ~ ^/[^/]+\.git(/.*)?$ {
+        if ($request_uri ~ /git-receive-pack$) {
+            set $deny_push 1;
+        }
+        if ($remote_addr ~ ^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.) {
+            set $deny_push 0;
+        }
+
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+    }
+}</pre>
+
+            <h2>SSL Certificates</h2>
+            <pre># Standard certificate
+certbot --nginx -d git.yourdomain.com
+
+# Wildcard for pages (requires DNS challenge)
+certbot certonly --manual --preferred-challenges dns \
+    -d '*.yourdomain.com' -d yourdomain.com</pre>
+
+            {{else if eq .Section "pages"}}
+            <h1>Pages Hosting</h1>
+
+            <p>Deploy static sites from git repositories to <code>{repo}.yourdomain.com</code>.</p>
+
+            <h2>Enable Pages</h2>
+            <pre>gitraf pages enable mysite</pre>
+            <p>You'll be prompted for:</p>
+            <ul>
+                <li><strong>Branch:</strong> Which branch to deploy from (default: <code>main</code>)</li>
+                <li><strong>Build command:</strong> Optional command like <code>npm run build</code></li>
+                <li><strong>Output directory:</strong> Where the built site is (default: <code>public</code>)</li>
+            </ul>
+
+            <h2>Deployment Flow</h2>
+            <ol>
+                <li>Push to the configured branch</li>
+                <li>Post-receive hook runs your build command (if configured)</li>
+                <li>Contents of output directory are deployed to <code>{repo}.yourdomain.com</code></li>
+            </ol>
+
+            <h2>Example: Static Site</h2>
+            <pre># Create repo
+gitraf create my-blog
+gitraf pages enable my-blog
+# Branch: main, Build: (empty), Output: public
+
+# Push your static files
+git clone git@server:my-blog.git
+cd my-blog
+mkdir public
+echo "&lt;h1&gt;Hello World&lt;/h1&gt;" > public/index.html
+git add . && git commit -m "Initial site"
+git push origin main
+
+# Site is now live at https://my-blog.yourdomain.com</pre>
+
+            <h2>Example: Build with npm</h2>
+            <pre>gitraf pages enable my-vite-app
+# Branch: main
+# Build: npm run build
+# Output: dist
+
+# Push triggers: npm install -> npm run build -> deploy dist/</pre>
+
+            <div class="info-box">
+                Pages require a wildcard SSL certificate for <code>*.yourdomain.com</code>.
+            </div>
+
+            {{else if eq .Section "lfs"}}
+            <h1>Git LFS</h1>
+
+            <p>Store large files with S3-compatible storage (AWS S3, Cloudflare R2, etc.).</p>
+
+            <h2>Setup</h2>
+            <pre>gitraf lfs setup</pre>
+            <p>You'll be prompted for:</p>
+            <ul>
+                <li>S3 endpoint URL</li>
+                <li>Bucket name</li>
+                <li>Access key ID</li>
+                <li>Secret access key</li>
+            </ul>
+
+            <h2>Usage</h2>
+            <p>In your repository, track large files:</p>
+            <pre># Install git-lfs locally
+apt install git-lfs  # or brew install git-lfs
+
+# Initialize LFS in repo
+git lfs install
+
+# Track file types
+git lfs track "*.psd"
+git lfs track "*.zip"
+git lfs track "videos/*"
+
+# Commit .gitattributes
+git add .gitattributes
+git commit -m "Track large files with LFS"</pre>
+
+            <h2>File Size Limits</h2>
+            <div class="warning-box">
+                Files over 10MB are rejected unless tracked by LFS. This prevents accidentally committing large files.
+            </div>
+
+            <h2>S3 Provider Examples</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Endpoint</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>AWS S3</td>
+                        <td><code>https://s3.amazonaws.com</code></td>
+                    </tr>
+                    <tr>
+                        <td>Cloudflare R2</td>
+                        <td><code>https://&lt;account-id&gt;.r2.cloudflarestorage.com</code></td>
+                    </tr>
+                    <tr>
+                        <td>Backblaze B2</td>
+                        <td><code>https://s3.&lt;region&gt;.backblazeb2.com</code></td>
+                    </tr>
+                    <tr>
+                        <td>MinIO</td>
+                        <td><code>http://localhost:9000</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            {{else if eq .Section "troubleshooting"}}
+            <h1>Troubleshooting</h1>
+
+            <h2>Connection Issues</h2>
+
+            <h3>Can't connect via SSH</h3>
+            <ul>
+                <li>Verify Tailscale is running: <code>tailscale status</code></li>
+                <li>Check server is reachable: <code>ping yourserver.tail12345.ts.net</code></li>
+                <li>Verify SSH key is added: <code>ssh-add -l</code></li>
+            </ul>
+
+            <h3>HTTPS returns 403</h3>
+            <ul>
+                <li>Repository might be private - connect via tailnet</li>
+                <li>Trying to push via HTTPS - only SSH supports push</li>
+            </ul>
+
+            <h2>Pages Issues</h2>
+
+            <h3>Site not updating after push</h3>
+            <ul>
+                <li>Check build command output: <code>cat /opt/ogit/pages/myrepo/build.log</code></li>
+                <li>Verify output directory exists and contains files</li>
+                <li>Force re-deploy: <code>gitraf pages deploy myrepo</code></li>
+            </ul>
+
+            <h3>Build fails</h3>
+            <ul>
+                <li>Ensure Node.js is installed for npm builds</li>
+                <li>Check if <code>package.json</code> exists</li>
+                <li>Verify build command is correct</li>
+            </ul>
+
+            <h2>LFS Issues</h2>
+
+            <h3>Push rejected: file too large</h3>
+            <ul>
+                <li>Track the file type with LFS: <code>git lfs track "*.zip"</code></li>
+                <li>Re-add the file: <code>git rm --cached file.zip && git add file.zip</code></li>
+            </ul>
+
+            <h3>LFS objects not downloading</h3>
+            <ul>
+                <li>Verify LFS is installed: <code>git lfs version</code></li>
+                <li>Check S3 credentials in server config</li>
+                <li>Pull LFS objects: <code>git lfs pull</code></li>
+            </ul>
+
+            <h2>General</h2>
+
+            <h3>Check server logs</h3>
+            <pre># gitraf-server logs
+journalctl -u gitraf-server -f
+
+# nginx logs
+tail -f /var/log/nginx/error.log</pre>
+
+            <h3>Restart services</h3>
+            <pre>systemctl restart gitraf-server
+systemctl restart nginx</pre>
+
+            {{end}}
+        </div>
+    </div>
+</main>
+
+{{template "footer" .}}

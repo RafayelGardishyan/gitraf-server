@@ -87,10 +87,17 @@ func main() {
 	// Routes
 	r.Get("/robots.txt", server.handleRobots)
 	r.Get("/", server.handleIndex)
+	r.Get("/docs", server.handleDocs)
+	r.Get("/docs/{section}", server.handleDocs)
+	r.Get("/new", server.handleNewRepo)
+	r.Post("/new", server.handleNewRepoPost)
 	r.Get("/{repo}", server.handleRepo)
 	r.Get("/{repo}/tree/{ref}/*", server.handleTree)
 	r.Get("/{repo}/blob/{ref}/*", server.handleBlob)
 	r.Get("/{repo}/commits/{ref}", server.handleCommits)
+	r.Get("/{repo}/commit/{hash}", server.handleCommit)
+	r.Get("/{repo}/settings", server.handleRepoSettings)
+	r.Post("/{repo}/settings", server.handleRepoSettingsPost)
 
 	// Git LFS routes
 	r.Post("/{repo}.git/info/lfs/objects/batch", server.handleLFSBatch)

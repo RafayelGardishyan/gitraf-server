@@ -40,6 +40,49 @@ type Commit struct {
 	Date      time.Time
 }
 
+// CommitDiff represents a commit with its diff
+type CommitDiff struct {
+	Commit     Commit
+	ParentHash string
+	Files      []FileDiff
+	Stats      DiffStats
+}
+
+// FileDiff represents changes to a single file
+type FileDiff struct {
+	Name      string
+	OldName   string // For renames
+	Status    string // added, modified, deleted, renamed
+	Additions int
+	Deletions int
+	IsBinary  bool
+	Chunks    []DiffChunk
+}
+
+// DiffChunk represents a chunk of changes in a file
+type DiffChunk struct {
+	OldStart int
+	OldLines int
+	NewStart int
+	NewLines int
+	Lines    []DiffLine
+}
+
+// DiffLine represents a single line in a diff
+type DiffLine struct {
+	Type    string // context, add, delete
+	Content string
+	OldNum  int
+	NewNum  int
+}
+
+// DiffStats represents overall diff statistics
+type DiffStats struct {
+	FilesChanged int
+	Additions    int
+	Deletions    int
+}
+
 // ListRepos returns a list of repositories in the given path
 func ListRepos(reposPath string, showPrivate bool) ([]Repo, error) {
 	entries, err := os.ReadDir(reposPath)
@@ -340,4 +383,195 @@ func RepoExists(reposPath, repoName string) bool {
 	repoPath := filepath.Join(reposPath, repoName+".git")
 	_, err := os.Stat(repoPath)
 	return err == nil
+}
+
+// IsEmptyRepo checks if a repository has no commits
+func IsEmptyRepo(repoPath string) bool {
+	r, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return true
+	}
+
+	// First try HEAD
+	_, err = r.Head()
+	if err == nil {
+		return false
+	}
+
+	// HEAD might point to non-existent branch, check if any branches exist
+	refs, err := r.References()
+	if err != nil {
+		return true
+	}
+
+	hasCommits := false
+	refs.ForEach(func(ref *plumbing.Reference) error {
+		if ref.Name().IsBranch() {
+			hasCommits = true
+			return io.EOF // Stop iteration
+		}
+		return nil
+	})
+
+	return !hasCommits
+}
+
+// CreateBareRepo creates a new bare git repository
+func CreateBareRepo(repoPath string) error {
+	_, err := git.PlainInit(repoPath, true)
+	return err
+}
+
+// GetCommitDetails returns detailed information about a specific commit
+func GetCommitDetails(reposPath, repoName, hash string) (*Commit, error) {
+	repoPath := filepath.Join(reposPath, repoName+".git")
+	r, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	commitHash := plumbing.NewHash(hash)
+	commit, err := r.CommitObject(commitHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Commit{
+		Hash:      commit.Hash.String(),
+		ShortHash: commit.Hash.String()[:8],
+		Message:   strings.TrimSpace(commit.Message),
+		Author:    commit.Author.Name,
+		Email:     commit.Author.Email,
+		Date:      commit.Author.When,
+	}, nil
+}
+
+// GetCommitDiff returns the diff for a specific commit
+func GetCommitDiff(reposPath, repoName, hash string) (*CommitDiff, error) {
+	repoPath := filepath.Join(reposPath, repoName+".git")
+	r, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	commitHash := plumbing.NewHash(hash)
+	commit, err := r.CommitObject(commitHash)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &CommitDiff{
+		Commit: Commit{
+			Hash:      commit.Hash.String(),
+			ShortHash: commit.Hash.String()[:8],
+			Message:   strings.TrimSpace(commit.Message),
+			Author:    commit.Author.Name,
+			Email:     commit.Author.Email,
+			Date:      commit.Author.When,
+		},
+	}
+
+	// Get parent commit for diff
+	var parentTree *object.Tree
+	if commit.NumParents() > 0 {
+		parent, err := commit.Parent(0)
+		if err == nil {
+			result.ParentHash = parent.Hash.String()[:8]
+			parentTree, _ = parent.Tree()
+		}
+	}
+
+	// Get current commit's tree
+	currentTree, err := commit.Tree()
+	if err != nil {
+		return result, nil // Return commit info without diff
+	}
+
+	// Calculate diff between parent and current
+	var changes object.Changes
+	if parentTree != nil {
+		changes, err = parentTree.Diff(currentTree)
+	} else {
+		// First commit - show all files as added
+		changes, err = object.DiffTree(nil, currentTree)
+	}
+	if err != nil {
+		return result, nil
+	}
+
+	// Process each changed file
+	for _, change := range changes {
+		fileDiff := FileDiff{}
+
+		// Determine file status and names
+		action, err := change.Action()
+		if err != nil {
+			continue
+		}
+
+		switch action {
+		case 1: // Insert
+			fileDiff.Status = "added"
+			fileDiff.Name = change.To.Name
+		case 2: // Delete
+			fileDiff.Status = "deleted"
+			fileDiff.Name = change.From.Name
+		case 3: // Modify
+			if change.From.Name != change.To.Name {
+				fileDiff.Status = "renamed"
+				fileDiff.OldName = change.From.Name
+				fileDiff.Name = change.To.Name
+			} else {
+				fileDiff.Status = "modified"
+				fileDiff.Name = change.To.Name
+			}
+		}
+
+		// Get file patch for diff lines
+		patch, err := change.Patch()
+		if err == nil && patch != nil {
+			for _, fp := range patch.FilePatches() {
+				if fp.IsBinary() {
+					fileDiff.IsBinary = true
+					continue
+				}
+
+				for _, chunk := range fp.Chunks() {
+					diffChunk := DiffChunk{}
+					lines := strings.Split(chunk.Content(), "\n")
+
+					for _, line := range lines {
+						if line == "" {
+							continue
+						}
+						diffLine := DiffLine{Content: line}
+
+						switch chunk.Type() {
+						case 0: // Equal
+							diffLine.Type = "context"
+						case 1: // Add
+							diffLine.Type = "add"
+							fileDiff.Additions++
+							result.Stats.Additions++
+						case 2: // Delete
+							diffLine.Type = "delete"
+							fileDiff.Deletions++
+							result.Stats.Deletions++
+						}
+
+						diffChunk.Lines = append(diffChunk.Lines, diffLine)
+					}
+
+					if len(diffChunk.Lines) > 0 {
+						fileDiff.Chunks = append(fileDiff.Chunks, diffChunk)
+					}
+				}
+			}
+		}
+
+		result.Files = append(result.Files, fileDiff)
+		result.Stats.FilesChanged++
+	}
+
+	return result, nil
 }
