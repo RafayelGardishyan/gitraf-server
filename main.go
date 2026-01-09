@@ -92,6 +92,11 @@ func main() {
 	r.Get("/{repo}/blob/{ref}/*", server.handleBlob)
 	r.Get("/{repo}/commits/{ref}", server.handleCommits)
 
+	// Git LFS routes
+	r.Post("/{repo}.git/info/lfs/objects/batch", server.handleLFSBatch)
+	r.Post("/{repo}.git/info/lfs/locks/verify", server.handleLFSLocksVerify)
+	r.Get("/{repo}.git/info/lfs/locks", server.handleLFSLocks)
+
 	// Start server
 	addr := fmt.Sprintf(":%d", *port)
 	log.Printf("Starting gitraf-server on %s", addr)
