@@ -966,42 +966,34 @@ func (s *Server) handleUpdateServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Download the latest binary
-	binaryURL := "https://git.rafayel.dev/releases/gitraf-server-linux-amd64"
-	binaryPath := "/opt/gitraf-server/gitraf-server"
-	tempPath := binaryPath + ".new"
+	serverDir := "/opt/gitraf-server"
+	goPath := "/usr/local/go/bin/go"
 
-	// Download to temp file
-	log.Printf("Downloading latest gitraf-server from %s", binaryURL)
-	cmd := exec.Command("curl", "-sL", "-o", tempPath, binaryURL)
+	// Pull latest changes
+	log.Printf("Pulling latest changes from git...")
+	cmd := exec.Command("git", "pull", "origin", "main")
+	cmd.Dir = serverDir
 	if output, err := cmd.CombinedOutput(); err != nil {
-		log.Printf("Error downloading update: %v - %s", err, string(output))
-		http.Error(w, "Failed to download update: "+string(output), http.StatusInternalServerError)
+		log.Printf("Error pulling updates: %v - %s", err, string(output))
+		http.Error(w, "Failed to pull updates: "+string(output), http.StatusInternalServerError)
 		return
 	}
 
-	// Make executable
-	if err := os.Chmod(tempPath, 0755); err != nil {
-		log.Printf("Error making binary executable: %v", err)
-		os.Remove(tempPath)
-		http.Error(w, "Failed to set permissions", http.StatusInternalServerError)
+	// Build the new binary
+	log.Printf("Building new binary...")
+	cmd = exec.Command(goPath, "build", "-o", "gitraf-server", ".")
+	cmd.Dir = serverDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		log.Printf("Error building: %v - %s", err, string(output))
+		http.Error(w, "Failed to build: "+string(output), http.StatusInternalServerError)
 		return
 	}
 
-	// Replace old binary
-	if err := os.Rename(tempPath, binaryPath); err != nil {
-		log.Printf("Error replacing binary: %v", err)
-		os.Remove(tempPath)
-		http.Error(w, "Failed to replace binary", http.StatusInternalServerError)
-		return
-	}
-
-	// Restart the service (this will kill the current process)
-	log.Printf("Update downloaded successfully. Restarting service...")
+	log.Printf("Update built successfully. Restarting service...")
 
 	// Send response before restarting
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status":"success","message":"Update downloaded. Restarting service..."}`))
+	w.Write([]byte(`{"status":"success","message":"Update complete. Restarting service..."}`))
 
 	// Restart in background after a short delay
 	go func() {
@@ -1009,7 +1001,7 @@ func (s *Server) handleUpdateServer(w http.ResponseWriter, r *http.Request) {
 		cmd := exec.Command("sleep", "1")
 		cmd.Run()
 
-		// Try systemctl restart first
+		// Restart the service
 		cmd = exec.Command("systemctl", "restart", "gitraf-server")
 		if err := cmd.Run(); err != nil {
 			log.Printf("systemctl restart failed: %v, server may need manual restart", err)
