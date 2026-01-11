@@ -722,6 +722,72 @@ func (s *Server) handleRepoSettings(w http.ResponseWriter, r *http.Request) {
 		sshKeyFingerprint, _ = getSSHKeyFingerprint()
 	}
 
+	// Read LFS config (server-level)
+	lfsEnabled := false
+	lfsEndpoint := ""
+	lfsBucket := ""
+	lfsRegion := "auto"
+	lfsAccessKey := ""
+	lfsSecretKey := ""
+	lfsConfigPath := filepath.Join(filepath.Dir(s.reposPath), "lfs-config.json")
+	if data, err := os.ReadFile(lfsConfigPath); err == nil {
+		var lfsConfig map[string]interface{}
+		if json.Unmarshal(data, &lfsConfig) == nil {
+			lfsEnabled = true
+			if v, ok := lfsConfig["endpoint"].(string); ok {
+				lfsEndpoint = v
+			}
+			if v, ok := lfsConfig["bucket"].(string); ok {
+				lfsBucket = v
+			}
+			if v, ok := lfsConfig["region"].(string); ok {
+				lfsRegion = v
+			}
+			if v, ok := lfsConfig["access_key"].(string); ok {
+				lfsAccessKey = v
+			}
+			if v, ok := lfsConfig["secret_key"].(string); ok {
+				lfsSecretKey = v
+			}
+		}
+	}
+
+	// Read Backup config (server-level)
+	backupEnabled := false
+	backupEndpoint := ""
+	backupBucket := ""
+	backupRegion := "auto"
+	backupAccessKey := ""
+	backupSecretKey := ""
+	backupSchedule := "daily"
+	backupConfigPath := filepath.Join(filepath.Dir(s.reposPath), "backup-config.json")
+	if data, err := os.ReadFile(backupConfigPath); err == nil {
+		var backupConfig map[string]interface{}
+		if json.Unmarshal(data, &backupConfig) == nil {
+			if v, ok := backupConfig["enabled"].(bool); ok {
+				backupEnabled = v
+			}
+			if v, ok := backupConfig["endpoint"].(string); ok {
+				backupEndpoint = v
+			}
+			if v, ok := backupConfig["bucket"].(string); ok {
+				backupBucket = v
+			}
+			if v, ok := backupConfig["region"].(string); ok {
+				backupRegion = v
+			}
+			if v, ok := backupConfig["access_key"].(string); ok {
+				backupAccessKey = v
+			}
+			if v, ok := backupConfig["secret_key"].(string); ok {
+				backupSecretKey = v
+			}
+			if v, ok := backupConfig["schedule"].(string); ok {
+				backupSchedule = v
+			}
+		}
+	}
+
 	data := map[string]interface{}{
 		"Title":             repoName + " Settings",
 		"RepoName":          repoName,
@@ -740,6 +806,21 @@ func (s *Server) handleRepoSettings(w http.ResponseWriter, r *http.Request) {
 		"SSHKeyExists":      sshKeyExists,
 		"SSHPublicKey":      sshPublicKey,
 		"SSHKeyFingerprint": sshKeyFingerprint,
+		// LFS config
+		"LFSEnabled":   lfsEnabled,
+		"LFSEndpoint":  lfsEndpoint,
+		"LFSBucket":    lfsBucket,
+		"LFSRegion":    lfsRegion,
+		"LFSAccessKey": lfsAccessKey,
+		"LFSSecretKey": lfsSecretKey,
+		// Backup config
+		"BackupEnabled":   backupEnabled,
+		"BackupEndpoint":  backupEndpoint,
+		"BackupBucket":    backupBucket,
+		"BackupRegion":    backupRegion,
+		"BackupAccessKey": backupAccessKey,
+		"BackupSecretKey": backupSecretKey,
+		"BackupSchedule":  backupSchedule,
 	}
 
 	s.renderTemplate(w, "settings.html", data)
@@ -1007,4 +1088,119 @@ func (s *Server) handleUpdateServer(w http.ResponseWriter, r *http.Request) {
 			log.Printf("systemctl restart failed: %v, server may need manual restart", err)
 		}
 	}()
+}
+
+// handleLFSConfigPost saves the LFS configuration (tailnet only)
+func (s *Server) handleLFSConfigPost(w http.ResponseWriter, r *http.Request) {
+	if !s.isTailnetRequest(r) {
+		http.Error(w, "Access denied - Tailnet required", http.StatusForbidden)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	lfsEnabled := r.FormValue("lfs_enabled") == "on"
+	lfsConfigPath := filepath.Join(filepath.Dir(s.reposPath), "lfs-config.json")
+
+	if lfsEnabled {
+		// Save LFS config
+		lfsConfig := map[string]interface{}{
+			"endpoint":   strings.TrimSpace(r.FormValue("lfs_endpoint")),
+			"bucket":     strings.TrimSpace(r.FormValue("lfs_bucket")),
+			"region":     strings.TrimSpace(r.FormValue("lfs_region")),
+			"access_key": strings.TrimSpace(r.FormValue("lfs_access_key")),
+			"secret_key": strings.TrimSpace(r.FormValue("lfs_secret_key")),
+		}
+
+		// Set default region if empty
+		if lfsConfig["region"] == "" {
+			lfsConfig["region"] = "auto"
+		}
+
+		data, err := json.MarshalIndent(lfsConfig, "", "  ")
+		if err != nil {
+			log.Printf("Error marshaling LFS config: %v", err)
+			http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
+			return
+		}
+
+		if err := os.WriteFile(lfsConfigPath, data, 0600); err != nil {
+			log.Printf("Error writing LFS config: %v", err)
+			http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("LFS configuration saved to %s", lfsConfigPath)
+	} else {
+		// Remove LFS config file when disabled
+		os.Remove(lfsConfigPath)
+		log.Printf("LFS configuration disabled, removed %s", lfsConfigPath)
+	}
+
+	// Redirect back to referrer
+	referer := r.Header.Get("Referer")
+	if referer == "" {
+		referer = "/"
+	}
+	http.Redirect(w, r, referer, http.StatusFound)
+}
+
+// handleBackupConfigPost saves the backup configuration (tailnet only)
+func (s *Server) handleBackupConfigPost(w http.ResponseWriter, r *http.Request) {
+	if !s.isTailnetRequest(r) {
+		http.Error(w, "Access denied - Tailnet required", http.StatusForbidden)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	backupEnabled := r.FormValue("backup_enabled") == "on"
+	backupConfigPath := filepath.Join(filepath.Dir(s.reposPath), "backup-config.json")
+
+	// Save backup config (always save, just toggle enabled flag)
+	backupConfig := map[string]interface{}{
+		"enabled":    backupEnabled,
+		"endpoint":   strings.TrimSpace(r.FormValue("backup_endpoint")),
+		"bucket":     strings.TrimSpace(r.FormValue("backup_bucket")),
+		"region":     strings.TrimSpace(r.FormValue("backup_region")),
+		"access_key": strings.TrimSpace(r.FormValue("backup_access_key")),
+		"secret_key": strings.TrimSpace(r.FormValue("backup_secret_key")),
+		"schedule":   r.FormValue("backup_schedule"),
+	}
+
+	// Set defaults
+	if backupConfig["region"] == "" {
+		backupConfig["region"] = "auto"
+	}
+	if backupConfig["schedule"] == "" {
+		backupConfig["schedule"] = "daily"
+	}
+
+	data, err := json.MarshalIndent(backupConfig, "", "  ")
+	if err != nil {
+		log.Printf("Error marshaling backup config: %v", err)
+		http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
+		return
+	}
+
+	if err := os.WriteFile(backupConfigPath, data, 0600); err != nil {
+		log.Printf("Error writing backup config: %v", err)
+		http.Error(w, "Failed to save configuration", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Backup configuration saved to %s (enabled: %v)", backupConfigPath, backupEnabled)
+
+	// Redirect back to referrer
+	referer := r.Header.Get("Referer")
+	if referer == "" {
+		referer = "/"
+	}
+	http.Redirect(w, r, referer, http.StatusFound)
 }

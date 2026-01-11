@@ -114,6 +114,8 @@ func main() {
 	// Admin routes (tailnet only)
 	r.Post("/admin/generate-ssh-key", server.handleGenerateSSHKey)
 	r.Post("/admin/update-server", server.handleUpdateServer)
+	r.Post("/admin/lfs-config", server.handleLFSConfigPost)
+	r.Post("/admin/backup-config", server.handleBackupConfigPost)
 
 	// Git LFS routes
 	r.Post("/{repo}.git/info/lfs/objects/batch", server.handleLFSBatch)
