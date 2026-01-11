@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -263,6 +264,9 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get submodule info for this path
+	submodules, _ := GetSubmodulesForPath(s.reposPath, repoName, ref, path)
+
 	// Get branches for dropdown
 	branches, _ := GetBranches(s.reposPath, repoName)
 
@@ -309,6 +313,7 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 		"Ref":         ref,
 		"Path":        path,
 		"Entries":     entries,
+		"Submodules":  submodules,
 		"Branches":    branches,
 		"Breadcrumbs": breadcrumbs,
 		"IsTailnet":   s.isTailnetRequest(r),
@@ -320,6 +325,71 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, "repo.html", data)
+}
+
+// handleSubmodule shows details for a specific submodule
+func (s *Server) handleSubmodule(w http.ResponseWriter, r *http.Request) {
+	repoName := chi.URLParam(r, "repo")
+	ref := chi.URLParam(r, "ref")
+	path := chi.URLParam(r, "*")
+
+	if !RepoExists(s.reposPath, repoName) {
+		http.Error(w, "Repository not found", http.StatusNotFound)
+		return
+	}
+
+	// Check access
+	repoPath := filepath.Join(s.reposPath, repoName+".git")
+	if !IsPublicRepo(repoPath) && !s.isTailnetRequest(r) {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return
+	}
+
+	info, err := GetSubmoduleInfo(s.reposPath, repoName, ref, path)
+	if err != nil {
+		log.Printf("Error getting submodule info: %v", err)
+		http.Error(w, "Submodule not found", http.StatusNotFound)
+		return
+	}
+
+	// Get branches for dropdown
+	branches, _ := GetBranches(s.reposPath, repoName)
+
+	// Build breadcrumbs
+	var breadcrumbs []map[string]string
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	currentPath := ""
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		currentPath = filepath.Join(currentPath, part)
+		isLast := i == len(parts)-1
+		bc := map[string]string{
+			"Name": part,
+			"Path": currentPath,
+		}
+		if isLast {
+			bc["IsSubmodule"] = "true"
+		}
+		breadcrumbs = append(breadcrumbs, bc)
+	}
+
+	data := map[string]interface{}{
+		"Title":       info.Name + " (submodule) - " + repoName,
+		"RepoName":    repoName,
+		"Ref":         ref,
+		"Path":        path,
+		"Submodule":   info,
+		"Branches":    branches,
+		"Breadcrumbs": breadcrumbs,
+		"IsTailnet":   s.isTailnetRequest(r),
+		"IsPublic":    IsPublicRepo(repoPath),
+		"PublicURL":   s.publicURL,
+		"TailnetURL":  s.tailnetURL,
+	}
+
+	s.renderTemplate(w, "submodule.html", data)
 }
 
 // handleBlob shows the content of a file
@@ -622,21 +692,32 @@ func (s *Server) handleRepoSettings(w http.ResponseWriter, r *http.Request) {
 	// Get branches for dropdown
 	branches, _ := GetBranches(s.reposPath, repoName)
 
+	// Get SSH key info for mirroring
+	sshKeyExists := sshKeyExists()
+	var sshPublicKey, sshKeyFingerprint string
+	if sshKeyExists {
+		sshPublicKey, _ = getSSHPublicKey()
+		sshKeyFingerprint, _ = getSSHKeyFingerprint()
+	}
+
 	data := map[string]interface{}{
-		"Title":          repoName + " Settings",
-		"RepoName":       repoName,
-		"Description":    description,
-		"IsPublic":       IsPublicRepo(repoPath),
-		"IsTailnet":      true,
-		"PublicURL":      s.publicURL,
-		"TailnetURL":     s.tailnetURL,
-		"PagesEnabled":   pagesEnabled,
-		"PagesBranch":    pagesBranch,
-		"PagesBuildCmd":  pagesBuildCmd,
-		"PagesOutputDir": pagesOutputDir,
-		"MirrorEnabled":  mirrorEnabled,
-		"MirrorURL":      mirrorURL,
-		"Branches":       branches,
+		"Title":             repoName + " Settings",
+		"RepoName":          repoName,
+		"Description":       description,
+		"IsPublic":          IsPublicRepo(repoPath),
+		"IsTailnet":         true,
+		"PublicURL":         s.publicURL,
+		"TailnetURL":        s.tailnetURL,
+		"PagesEnabled":      pagesEnabled,
+		"PagesBranch":       pagesBranch,
+		"PagesBuildCmd":     pagesBuildCmd,
+		"PagesOutputDir":    pagesOutputDir,
+		"MirrorEnabled":     mirrorEnabled,
+		"MirrorURL":         mirrorURL,
+		"Branches":          branches,
+		"SSHKeyExists":      sshKeyExists,
+		"SSHPublicKey":      sshPublicKey,
+		"SSHKeyFingerprint": sshKeyFingerprint,
 	}
 
 	s.renderTemplate(w, "settings.html", data)
@@ -774,4 +855,142 @@ func (s *Server) handleRobots(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`User-agent: *
 Disallow: /
 `))
+}
+
+// SSH Key Management for GitHub Mirroring
+
+// getSSHKeyPath returns the path to the SSH key for mirroring
+func getSSHKeyPath() string {
+	return "/opt/ogit/config/ssh/id_ed25519"
+}
+
+// sshKeyExists checks if the SSH key exists
+func sshKeyExists() bool {
+	_, err := os.Stat(getSSHKeyPath())
+	return err == nil
+}
+
+// generateSSHKey generates a new Ed25519 SSH key for mirroring
+func generateSSHKey() error {
+	keyPath := getSSHKeyPath()
+
+	// Create directory if it doesn't exist
+	keyDir := filepath.Dir(keyPath)
+	if err := os.MkdirAll(keyDir, 0700); err != nil {
+		return fmt.Errorf("failed to create ssh directory: %v", err)
+	}
+
+	// Generate key using ssh-keygen
+	cmd := exec.Command("ssh-keygen", "-t", "ed25519", "-f", keyPath, "-N", "", "-C", "gitraf-mirror")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("ssh-keygen failed: %v - %s", err, string(output))
+	}
+
+	return nil
+}
+
+// getSSHPublicKey reads and returns the public key
+func getSSHPublicKey() (string, error) {
+	data, err := os.ReadFile(getSSHKeyPath() + ".pub")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+// getSSHKeyFingerprint returns the key fingerprint
+func getSSHKeyFingerprint() (string, error) {
+	cmd := exec.Command("ssh-keygen", "-lf", getSSHKeyPath()+".pub")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+// handleGenerateSSHKey generates a new SSH key for mirroring (tailnet only)
+func (s *Server) handleGenerateSSHKey(w http.ResponseWriter, r *http.Request) {
+	if !s.isTailnetRequest(r) {
+		http.Error(w, "Access denied - Tailnet required", http.StatusForbidden)
+		return
+	}
+
+	// Check if key already exists
+	if sshKeyExists() {
+		http.Error(w, "SSH key already exists. Delete the existing key first to regenerate.", http.StatusConflict)
+		return
+	}
+
+	// Generate the key
+	if err := generateSSHKey(); err != nil {
+		log.Printf("Error generating SSH key: %v", err)
+		http.Error(w, "Failed to generate SSH key", http.StatusInternalServerError)
+		return
+	}
+
+	// Get the referrer to redirect back
+	referer := r.Header.Get("Referer")
+	if referer == "" {
+		referer = "/"
+	}
+
+	http.Redirect(w, r, referer, http.StatusFound)
+}
+
+// handleUpdateServer updates the gitraf-server binary (tailnet only)
+func (s *Server) handleUpdateServer(w http.ResponseWriter, r *http.Request) {
+	if !s.isTailnetRequest(r) {
+		http.Error(w, "Access denied - Tailnet required", http.StatusForbidden)
+		return
+	}
+
+	// Download the latest binary
+	binaryURL := "https://git.rafayel.dev/releases/gitraf-server-linux-amd64"
+	binaryPath := "/opt/gitraf-server/gitraf-server"
+	tempPath := binaryPath + ".new"
+
+	// Download to temp file
+	log.Printf("Downloading latest gitraf-server from %s", binaryURL)
+	cmd := exec.Command("curl", "-sL", "-o", tempPath, binaryURL)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		log.Printf("Error downloading update: %v - %s", err, string(output))
+		http.Error(w, "Failed to download update: "+string(output), http.StatusInternalServerError)
+		return
+	}
+
+	// Make executable
+	if err := os.Chmod(tempPath, 0755); err != nil {
+		log.Printf("Error making binary executable: %v", err)
+		os.Remove(tempPath)
+		http.Error(w, "Failed to set permissions", http.StatusInternalServerError)
+		return
+	}
+
+	// Replace old binary
+	if err := os.Rename(tempPath, binaryPath); err != nil {
+		log.Printf("Error replacing binary: %v", err)
+		os.Remove(tempPath)
+		http.Error(w, "Failed to replace binary", http.StatusInternalServerError)
+		return
+	}
+
+	// Restart the service (this will kill the current process)
+	log.Printf("Update downloaded successfully. Restarting service...")
+
+	// Send response before restarting
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"status":"success","message":"Update downloaded. Restarting service..."}`))
+
+	// Restart in background after a short delay
+	go func() {
+		// Small delay to allow response to be sent
+		cmd := exec.Command("sleep", "1")
+		cmd.Run()
+
+		// Try systemctl restart first
+		cmd = exec.Command("systemctl", "restart", "gitraf-server")
+		if err := cmd.Run(); err != nil {
+			log.Printf("systemctl restart failed: %v, server may need manual restart", err)
+		}
+	}()
 }

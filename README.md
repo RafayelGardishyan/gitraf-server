@@ -6,6 +6,10 @@ A minimal Go web server for browsing git repositories with Tailscale tailnet-awa
 
 - **Tailnet-aware access control** - Shows all repos when accessed from tailnet, only public repos otherwise
 - **Repository browser** - Browse files, view contents, commit history
+- **Submodule support** - Full display with commit hash, URL, status, and external links
+- **GitHub mirroring** - Configure mirrors via web UI with SSH key management
+- **Repository settings** - Configure visibility, pages, and mirroring from the web
+- **One-click updates** - Update server to latest version from the settings page
 - **Minimal UI** - Clean, responsive design with dark/light mode support
 - **Public repo detection** - Uses `git-daemon-export-ok` file to determine visibility
 
@@ -93,6 +97,37 @@ location / {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 }
 ```
+
+## Web Interface Features
+
+### Repository Settings (Tailnet Only)
+
+Access repository settings at `/{repo}/settings`:
+
+- **General**: Description and visibility (public/private)
+- **Pages**: Enable/disable static site hosting, configure branch, build command, and output directory
+- **GitHub Mirror**: Configure automatic syncing to GitHub
+
+### Submodule Display
+
+Repositories with submodules show:
+- Purple folder icon to distinguish from regular directories
+- Commit hash reference
+- Link to external repository (GitHub, GitLab, etc.)
+- Detailed view with URL, branch, and status
+
+### SSH Key Management
+
+Generate and manage SSH keys for GitHub mirroring:
+- Generate Ed25519 keys from the settings page
+- View and copy public key
+- Add to GitHub for mirroring access
+
+### Server Administration
+
+From any repository settings page:
+- One-click update to latest version
+- Automatic service restart
 
 ## License
 

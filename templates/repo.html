@@ -97,7 +97,12 @@ git push -u origin main</pre>
             {{range .Entries}}
             <tr style="border-bottom: 1px solid var(--border);">
                 <td style="padding: 8px 16px; width: 24px;">
-                    {{if .IsDir}}
+                    {{if .IsSubmodule}}
+                    <!-- Submodule icon: folder with arrow -->
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="color: #8250df;">
+                        <path d="M0 2.75C0 1.784.784 1 1.75 1H5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm9.42 9.36 2.883-2.677a.25.25 0 0 0 0-.366L9.42 6.39a.249.249 0 0 0-.42.183V8.5H4.75a.75.75 0 0 0 0 1.5H9v1.927c0 .218.26.331.42.183Z"/>
+                    </svg>
+                    {{else if .IsDir}}
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="color: var(--link);">
                         <path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z"/>
                     </svg>
@@ -108,7 +113,18 @@ git push -u origin main</pre>
                     {{end}}
                 </td>
                 <td style="padding: 8px 16px;">
-                    {{if .IsDir}}
+                    {{if .IsSubmodule}}
+                    {{$sub := index $.Submodules .Name}}
+                    <a href="/{{$.RepoName}}/submodule/{{$.Ref}}/{{if $.Path}}{{$.Path}}/{{end}}{{.Name}}">{{.Name}}</a>
+                    <span style="color: var(--text-secondary); margin-left: 8px; font-family: ui-monospace, monospace; font-size: 12px;">@ {{.Hash | truncate 8}}</span>
+                    {{if $sub}}{{if $sub.WebURL}}
+                    <a href="{{$sub.WebURL}}" target="_blank" rel="noopener" style="margin-left: 8px; color: var(--text-secondary);" title="View external repo">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z"/>
+                        </svg>
+                    </a>
+                    {{end}}{{end}}
+                    {{else if .IsDir}}
                     <a href="/{{$.RepoName}}/tree/{{$.Ref}}/{{if $.Path}}{{$.Path}}/{{end}}{{.Name}}">{{.Name}}</a>
                     {{else}}
                     <a href="/{{$.RepoName}}/blob/{{$.Ref}}/{{if $.Path}}{{$.Path}}/{{end}}{{.Name}}">{{.Name}}</a>

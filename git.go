@@ -1,15 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
@@ -23,11 +28,24 @@ type Repo struct {
 
 // TreeEntry represents a file or directory in a git tree
 type TreeEntry struct {
-	Name    string
-	IsDir   bool
-	Mode    string
-	Size    int64
-	Hash    string
+	Name        string
+	IsDir       bool
+	IsSubmodule bool
+	Mode        string
+	Size        int64
+	Hash        string
+}
+
+// SubmoduleInfo represents parsed submodule information
+type SubmoduleInfo struct {
+	Name      string // Submodule name from .gitmodules
+	Path      string // Path relative to repo root
+	URL       string // Clone URL
+	Branch    string // Tracking branch (optional)
+	Hash      string // Current commit hash (40 chars)
+	ShortHash string // Short hash for display (8 chars)
+	Status    string // "configured", "missing-config"
+	WebURL    string // Constructed web URL for external link
 }
 
 // Commit represents a git commit
@@ -199,10 +217,11 @@ func GetTree(reposPath, repoName, ref, path string) ([]TreeEntry, error) {
 	var entries []TreeEntry
 	for _, e := range tree.Entries {
 		entry := TreeEntry{
-			Name:  e.Name,
-			IsDir: e.Mode.IsFile() == false,
-			Mode:  e.Mode.String(),
-			Hash:  e.Hash.String(),
+			Name:        e.Name,
+			IsDir:       e.Mode == filemode.Dir,
+			IsSubmodule: e.Mode == filemode.Submodule,
+			Mode:        e.Mode.String(),
+			Hash:        e.Hash.String(),
 		}
 
 		// Get file size if it's a file
@@ -215,11 +234,17 @@ func GetTree(reposPath, repoName, ref, path string) ([]TreeEntry, error) {
 		entries = append(entries, entry)
 	}
 
-	// Sort: directories first, then alphabetically
+	// Sort: directories first, then submodules, then files alphabetically
 	sort.Slice(entries, func(i, j int) bool {
+		// Directories first
 		if entries[i].IsDir != entries[j].IsDir {
 			return entries[i].IsDir
 		}
+		// Then submodules
+		if entries[i].IsSubmodule != entries[j].IsSubmodule {
+			return entries[i].IsSubmodule
+		}
+		// Then alphabetically
 		return entries[i].Name < entries[j].Name
 	})
 
@@ -571,6 +596,174 @@ func GetCommitDiff(reposPath, repoName, hash string) (*CommitDiff, error) {
 
 		result.Files = append(result.Files, fileDiff)
 		result.Stats.FilesChanged++
+	}
+
+	return result, nil
+}
+
+// ParseGitmodules reads and parses .gitmodules from a tree at given ref
+func ParseGitmodules(reposPath, repoName, ref string) (map[string]*config.Submodule, error) {
+	content, err := GetBlob(reposPath, repoName, ref, ".gitmodules")
+	if err != nil {
+		return nil, err // .gitmodules doesn't exist
+	}
+
+	modules := config.NewModules()
+	if err := modules.Unmarshal(content); err != nil {
+		return nil, err
+	}
+
+	// Return map keyed by path for easy lookup
+	result := make(map[string]*config.Submodule)
+	for _, sub := range modules.Submodules {
+		result[sub.Path] = sub
+	}
+	return result, nil
+}
+
+// ConvertToWebURL converts a git URL to a browsable web URL
+func ConvertToWebURL(gitURL, hash string) string {
+	// Handle SSH format: git@host:user/repo.git
+	sshRegex := regexp.MustCompile(`^git@([^:]+):(.+?)(?:\.git)?$`)
+	if matches := sshRegex.FindStringSubmatch(gitURL); matches != nil {
+		host := matches[1]
+		path := strings.TrimSuffix(matches[2], ".git")
+		return formatWebURL(host, path, hash)
+	}
+
+	// Handle HTTPS format: https://host/user/repo.git
+	if parsed, err := url.Parse(gitURL); err == nil && parsed.Host != "" {
+		path := strings.TrimSuffix(parsed.Path, ".git")
+		path = strings.TrimPrefix(path, "/")
+		return formatWebURL(parsed.Host, path, hash)
+	}
+
+	return gitURL // Return original if can't parse
+}
+
+func formatWebURL(host, path, hash string) string {
+	switch {
+	case strings.Contains(host, "github.com"):
+		return fmt.Sprintf("https://github.com/%s/tree/%s", path, hash)
+	case strings.Contains(host, "gitlab.com"):
+		return fmt.Sprintf("https://gitlab.com/%s/-/tree/%s", path, hash)
+	case strings.Contains(host, "bitbucket.org"):
+		return fmt.Sprintf("https://bitbucket.org/%s/src/%s", path, hash)
+	case strings.Contains(host, "git.rafayel.dev"):
+		// Internal gitraf - extract repo name and link locally
+		parts := strings.Split(path, "/")
+		if len(parts) > 0 {
+			repoName := strings.TrimSuffix(parts[len(parts)-1], ".git")
+			return fmt.Sprintf("/%s/tree/%s/", repoName, hash)
+		}
+		fallthrough
+	default:
+		return fmt.Sprintf("https://%s/%s", host, path)
+	}
+}
+
+// GetSubmoduleInfo returns detailed information about a specific submodule
+func GetSubmoduleInfo(reposPath, repoName, ref, submodulePath string) (*SubmoduleInfo, error) {
+	repoPath := filepath.Join(reposPath, repoName+".git")
+	r, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	hash, err := resolveRef(r, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	commit, err := r.CommitObject(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	tree, err := commit.Tree()
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the submodule entry in the tree
+	submodulePath = strings.Trim(submodulePath, "/")
+	entry, err := tree.FindEntry(submodulePath)
+	if err != nil {
+		return nil, fmt.Errorf("submodule not found: %s", submodulePath)
+	}
+
+	if entry.Mode != filemode.Submodule {
+		return nil, fmt.Errorf("path is not a submodule: %s", submodulePath)
+	}
+
+	info := &SubmoduleInfo{
+		Path:      submodulePath,
+		Name:      filepath.Base(submodulePath),
+		Hash:      entry.Hash.String(),
+		ShortHash: entry.Hash.String()[:8],
+		Status:    "configured",
+	}
+
+	// Try to get .gitmodules config
+	if submodules, err := ParseGitmodules(reposPath, repoName, ref); err == nil {
+		if sub, exists := submodules[submodulePath]; exists {
+			info.Name = sub.Name
+			info.URL = sub.URL
+			info.Branch = sub.Branch
+			info.WebURL = ConvertToWebURL(sub.URL, info.Hash)
+		} else {
+			info.Status = "missing-config"
+		}
+	} else {
+		info.Status = "missing-config"
+	}
+
+	return info, nil
+}
+
+// GetSubmodulesForPath returns submodule info for entries at a given path
+func GetSubmodulesForPath(reposPath, repoName, ref, path string) (map[string]*SubmoduleInfo, error) {
+	entries, err := GetTree(reposPath, repoName, ref, path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse .gitmodules once
+	gitmodules, _ := ParseGitmodules(reposPath, repoName, ref)
+
+	result := make(map[string]*SubmoduleInfo)
+	for _, entry := range entries {
+		if !entry.IsSubmodule {
+			continue
+		}
+
+		fullPath := entry.Name
+		if path != "" && path != "/" {
+			fullPath = filepath.Join(strings.Trim(path, "/"), entry.Name)
+		}
+
+		info := &SubmoduleInfo{
+			Path:      fullPath,
+			Name:      entry.Name,
+			Hash:      entry.Hash,
+			ShortHash: entry.Hash[:8],
+			Status:    "configured",
+		}
+
+		if gitmodules != nil {
+			if sub, exists := gitmodules[fullPath]; exists {
+				info.Name = sub.Name
+				info.URL = sub.URL
+				info.Branch = sub.Branch
+				info.WebURL = ConvertToWebURL(sub.URL, info.Hash)
+			} else {
+				info.Status = "missing-config"
+			}
+		} else {
+			info.Status = "missing-config"
+		}
+
+		result[entry.Name] = info
 	}
 
 	return result, nil

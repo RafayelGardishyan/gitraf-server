@@ -94,10 +94,15 @@ func main() {
 	r.Get("/{repo}", server.handleRepo)
 	r.Get("/{repo}/tree/{ref}/*", server.handleTree)
 	r.Get("/{repo}/blob/{ref}/*", server.handleBlob)
+	r.Get("/{repo}/submodule/{ref}/*", server.handleSubmodule)
 	r.Get("/{repo}/commits/{ref}", server.handleCommits)
 	r.Get("/{repo}/commit/{hash}", server.handleCommit)
 	r.Get("/{repo}/settings", server.handleRepoSettings)
 	r.Post("/{repo}/settings", server.handleRepoSettingsPost)
+
+	// Admin routes (tailnet only)
+	r.Post("/admin/generate-ssh-key", server.handleGenerateSSHKey)
+	r.Post("/admin/update-server", server.handleUpdateServer)
 
 	// Git LFS routes
 	r.Post("/{repo}.git/info/lfs/objects/batch", server.handleLFSBatch)

@@ -1,0 +1,128 @@
+{{template "head" .}}
+
+<main class="container">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <h1 style="font-size: 20px;">
+            <a href="/" style="color: var(--text-secondary);">repos</a>
+            <span style="color: var(--text-secondary); margin: 0 4px;">/</span>
+            <a href="/{{.RepoName}}">{{.RepoName}}</a>
+        </h1>
+        {{if .IsPublic}}
+        <span class="badge badge-public">public</span>
+        {{else}}
+        <span class="badge badge-private">private</span>
+        {{end}}
+    </div>
+
+    <nav style="display: flex; gap: 24px; border-bottom: 1px solid var(--border); margin-bottom: 16px;">
+        <a href="/{{.RepoName}}/tree/{{.Ref}}/" class="active" style="padding: 8px 0; border-bottom: 2px solid var(--link); margin-bottom: -1px;">
+            Files
+        </a>
+        <a href="/{{.RepoName}}/commits/{{.Ref}}" style="padding: 8px 0; color: var(--text-secondary);">
+            Commits
+        </a>
+    </nav>
+
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <select onchange="window.location.href='/{{.RepoName}}/submodule/' + this.value + '/{{.Path}}'">
+            {{range .Branches}}
+            <option value="{{.}}" {{if eq . $.Ref}}selected{{end}}>{{.}}</option>
+            {{end}}
+        </select>
+
+        <div style="display: flex; align-items: center; gap: 4px; color: var(--text-secondary);">
+            <a href="/{{.RepoName}}/tree/{{.Ref}}/" style="color: var(--text-secondary);">{{.RepoName}}</a>
+            {{range .Breadcrumbs}}
+            <span>/</span>
+            {{if eq .IsSubmodule "true"}}
+            <span style="color: var(--text);">{{.Name}}</span>
+            {{else if .Path}}
+            <a href="/{{$.RepoName}}/tree/{{$.Ref}}/{{.Path}}" style="color: var(--text-secondary);">{{.Name}}</a>
+            {{else}}
+            <span style="color: var(--text);">{{.Name}}</span>
+            {{end}}
+            {{end}}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="color: #8250df;">
+                <path d="M0 2.75C0 1.784.784 1 1.75 1H5c.55 0 1.07.26 1.4.7l.9 1.2a.25.25 0 0 0 .2.1h6.75c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm9.42 9.36 2.883-2.677a.25.25 0 0 0 0-.366L9.42 6.39a.249.249 0 0 0-.42.183V8.5H4.75a.75.75 0 0 0 0 1.5H9v1.927c0 .218.26.331.42.183Z"/>
+            </svg>
+            <span style="font-weight: 600;">{{.Submodule.Name}}</span>
+            <span class="badge" style="background: rgba(130, 80, 223, 0.15); color: #8250df;">submodule</span>
+            {{if eq .Submodule.Status "missing-config"}}
+            <span class="badge" style="background: rgba(255, 166, 0, 0.15); color: #d29922;">unconfigured</span>
+            {{end}}
+        </div>
+
+        <div style="padding: 24px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 12px 0; color: var(--text-secondary); width: 120px; vertical-align: top;">Commit</td>
+                    <td style="padding: 12px 0; font-family: ui-monospace, monospace;">
+                        {{.Submodule.Hash}}
+                    </td>
+                </tr>
+                {{if .Submodule.URL}}
+                <tr>
+                    <td style="padding: 12px 0; color: var(--text-secondary); vertical-align: top;">URL</td>
+                    <td style="padding: 12px 0; font-family: ui-monospace, monospace; word-break: break-all;">
+                        {{.Submodule.URL}}
+                    </td>
+                </tr>
+                {{end}}
+                {{if .Submodule.Branch}}
+                <tr>
+                    <td style="padding: 12px 0; color: var(--text-secondary); vertical-align: top;">Branch</td>
+                    <td style="padding: 12px 0;">{{.Submodule.Branch}}</td>
+                </tr>
+                {{end}}
+                <tr>
+                    <td style="padding: 12px 0; color: var(--text-secondary); vertical-align: top;">Path</td>
+                    <td style="padding: 12px 0;">{{.Submodule.Path}}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px 0; color: var(--text-secondary); vertical-align: top;">Status</td>
+                    <td style="padding: 12px 0;">
+                        {{if eq .Submodule.Status "configured"}}
+                        <span style="color: var(--success);">Configured</span>
+                        {{else}}
+                        <span style="color: #d29922;">Missing .gitmodules entry</span>
+                        {{end}}
+                    </td>
+                </tr>
+            </table>
+
+            {{if .Submodule.WebURL}}
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                <a href="{{.Submodule.WebURL}}" target="_blank" rel="noopener" class="btn" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--link); color: white; border: none;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z"/>
+                    </svg>
+                    View on external repository
+                </a>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    <div style="margin-top: 24px; padding: 16px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px;">
+        <h3 style="font-size: 14px; margin-bottom: 12px;">Clone</h3>
+        {{if .IsTailnet}}
+        <div style="margin-bottom: 8px;">
+            <code style="font-size: 13px; color: var(--text-secondary);">SSH (read/write)</code>
+        </div>
+        <pre style="margin: 0; padding: 8px 12px;">git clone git@{{.TailnetURL}}:{{.RepoName}}.git</pre>
+        {{end}}
+        {{if .IsPublic}}
+        <div style="margin-top: 12px; margin-bottom: 8px;">
+            <code style="font-size: 13px; color: var(--text-secondary);">HTTPS (read-only)</code>
+        </div>
+        <pre style="margin: 0; padding: 8px 12px;">git clone {{.PublicURL}}/{{.RepoName}}.git</pre>
+        {{end}}
+    </div>
+</main>
+
+{{template "footer" .}}
