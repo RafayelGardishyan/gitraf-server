@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}} - gitraf</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png">
     <style>
         :root {
             --bg: #ffffff;
@@ -242,7 +243,7 @@
 <body>
     <header>
         <div class="container">
-            <a href="/" class="logo">gitraf</a>
+            <a href="/" class="logo"><img src="/static/logo.png" alt="gitraf" style="height: 28px;"></a>
             <nav>
                 <a href="/">Repositories</a>
                 <a href="/docs">Docs</a>
@@ -258,7 +259,9 @@
 {{define "footer"}}
     <footer style="margin-top: 48px; padding: 24px 0; border-top: 1px solid var(--border); text-align: center; color: var(--text-secondary); font-size: 12px;">
         <div class="container">
-            <p>gitraf - lightweight git hosting</p><p style="margin-top: 8px;">Free from corporations. Self-hosted. Open source.</p>
+            <img src="/static/favicon.png" alt="gitraf" style="height: 24px; margin-bottom: 8px; opacity: 0.7;">
+            <p>gitraf - lightweight git hosting</p>
+            <p style="margin-top: 8px;">Free from corporations. Self-hosted. Open source.</p>
         </div>
     </footer>
 </body>
