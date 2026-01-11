@@ -13,6 +13,14 @@
             {{else}}
             <span class="badge badge-private">private</span>
             {{end}}
+            {{if .PagesEnabled}}
+            <a href="{{.PagesURL}}" target="_blank" rel="noopener" class="badge" style="background: var(--link); color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25ZM6.5 6.5v8h7.75a.25.25 0 0 0 .25-.25V6.5Zm8-1.5V1.75a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25V5Zm-8 10v-8H1.5v7.75c0 .138.112.25.25.25Z"/>
+                </svg>
+                pages
+            </a>
+            {{end}}
         </div>
         {{if .IsTailnet}}
         <a href="/{{.RepoName}}/settings" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; color: var(--text); text-decoration: none; font-size: 13px;">
@@ -116,7 +124,7 @@ git push -u origin main</pre>
                     {{if .IsSubmodule}}
                     {{$sub := index $.Submodules .Name}}
                     <a href="/{{$.RepoName}}/submodule/{{$.Ref}}/{{if $.Path}}{{$.Path}}/{{end}}{{.Name}}">{{.Name}}</a>
-                    <span style="color: var(--text-secondary); margin-left: 8px; font-family: ui-monospace, monospace; font-size: 12px;">@ {{.Hash | truncate 8}}</span>
+                    <span style="color: var(--text-secondary); margin-left: 8px; font-family: ui-monospace, monospace; font-size: 12px;">@ {{truncate .Hash 8}}</span>
                     {{if $sub}}{{if $sub.WebURL}}
                     <a href="{{$sub.WebURL}}" target="_blank" rel="noopener" style="margin-left: 8px; color: var(--text-secondary);" title="View external repo">
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">

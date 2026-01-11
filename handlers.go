@@ -309,21 +309,41 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check if pages is enabled for this repo
+	pagesEnabled := false
+	pagesURL := ""
+	pagesConfigPath := filepath.Join(repoPath, "git-pages.json")
+	if data, err := os.ReadFile(pagesConfigPath); err == nil {
+		var pagesConfig map[string]interface{}
+		if json.Unmarshal(data, &pagesConfig) == nil {
+			if enabled, ok := pagesConfig["enabled"].(bool); ok {
+				pagesEnabled = enabled
+			} else {
+				pagesEnabled = true // File exists means enabled
+			}
+		}
+	}
+	if pagesEnabled && s.pagesBaseURL != "" {
+		pagesURL = "https://" + repoName + "." + s.pagesBaseURL
+	}
+
 	data := map[string]interface{}{
-		"Title":       repoName,
-		"RepoName":    repoName,
-		"Ref":         ref,
-		"Path":        path,
-		"Entries":     entries,
-		"Submodules":  submodules,
-		"Branches":    branches,
-		"Breadcrumbs": breadcrumbs,
-		"IsTailnet":   s.isTailnetRequest(r),
-		"IsPublic":    IsPublicRepo(repoPath),
-		"PublicURL":   s.publicURL,
-		"TailnetURL":  s.tailnetURL,
-		"ReadmeHTML":  readmeHTML,
-		"ReadmeName":  readmeName,
+		"Title":        repoName,
+		"RepoName":     repoName,
+		"Ref":          ref,
+		"Path":         path,
+		"Entries":      entries,
+		"Submodules":   submodules,
+		"Branches":     branches,
+		"Breadcrumbs":  breadcrumbs,
+		"IsTailnet":    s.isTailnetRequest(r),
+		"IsPublic":     IsPublicRepo(repoPath),
+		"PublicURL":    s.publicURL,
+		"TailnetURL":   s.tailnetURL,
+		"ReadmeHTML":   readmeHTML,
+		"ReadmeName":   readmeName,
+		"PagesEnabled": pagesEnabled,
+		"PagesURL":     pagesURL,
 	}
 
 	s.renderTemplate(w, "repo.html", data)
