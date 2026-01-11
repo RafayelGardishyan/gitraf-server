@@ -1148,6 +1148,19 @@ func (s *Server) handleLFSConfigPost(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, referer, http.StatusFound)
 }
 
+// replaceConfigLine replaces a shell config line like KEY="value" with a new value
+func replaceConfigLine(content, key, newValue string) string {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, key+"=") {
+			lines[i] = key + "=" + newValue
+			return strings.Join(lines, "\n")
+		}
+	}
+	return content
+}
+
 // handleBackupConfigPost saves the backup configuration (tailnet only)
 func (s *Server) handleBackupConfigPost(w http.ResponseWriter, r *http.Request) {
 	if !s.isTailnetRequest(r) {
@@ -1196,6 +1209,48 @@ func (s *Server) handleBackupConfigPost(w http.ResponseWriter, r *http.Request) 
 	}
 
 	log.Printf("Backup configuration saved to %s (enabled: %v)", backupConfigPath, backupEnabled)
+
+	// Also update the backup shell script config file
+	backupShellConfigPath := filepath.Join(filepath.Dir(s.reposPath), "..", "backup", "backup.conf")
+	if _, err := os.Stat(backupShellConfigPath); err == nil {
+		// Read existing config
+		existingData, err := os.ReadFile(backupShellConfigPath)
+		if err == nil {
+			content := string(existingData)
+			endpoint := backupConfig["endpoint"].(string)
+			bucket := backupConfig["bucket"].(string)
+			accessKey := backupConfig["access_key"].(string)
+			secretKey := backupConfig["secret_key"].(string)
+
+			// Update AWS_ENDPOINT_URL
+			if endpoint != "" {
+				content = replaceConfigLine(content, "AWS_ENDPOINT_URL", fmt.Sprintf(`"%s"`, endpoint))
+			}
+			// Update S3_BUCKET
+			if bucket != "" {
+				content = replaceConfigLine(content, "S3_BUCKET", fmt.Sprintf(`"%s"`, bucket))
+			}
+
+			// Write AWS credentials file for the default profile
+			awsCredsDir := filepath.Join(os.Getenv("HOME"), ".aws")
+			if awsCredsDir == "/.aws" {
+				awsCredsDir = "/root/.aws"
+			}
+			if accessKey != "" && secretKey != "" {
+				os.MkdirAll(awsCredsDir, 0700)
+				credsContent := fmt.Sprintf("[default]\naws_access_key_id = %s\naws_secret_access_key = %s\n", accessKey, secretKey)
+				if err := os.WriteFile(filepath.Join(awsCredsDir, "credentials"), []byte(credsContent), 0600); err != nil {
+					log.Printf("Warning: Could not write AWS credentials: %v", err)
+				}
+			}
+
+			if err := os.WriteFile(backupShellConfigPath, []byte(content), 0644); err != nil {
+				log.Printf("Warning: Could not update backup.conf: %v", err)
+			} else {
+				log.Printf("Backup shell config updated at %s", backupShellConfigPath)
+			}
+		}
+	}
 
 	// Redirect back to referrer
 	referer := r.Header.Get("Referer")
