@@ -88,6 +88,13 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RealIP)
 
+	// Static files
+	staticPath := filepath.Join(filepath.Dir(*templatesPath), "static")
+	if _, err := os.Stat(staticPath); err == nil {
+		fileServer := http.FileServer(http.Dir(staticPath))
+		r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+	}
+
 	// Routes
 	r.Get("/robots.txt", server.handleRobots)
 	r.Get("/", server.handleIndex)
