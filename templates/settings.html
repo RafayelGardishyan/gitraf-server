@@ -441,11 +441,20 @@
             fetch('/admin/update-server', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
-                    status.textContent = data.message + ' Page will reload in 15 seconds...';
-                    setTimeout(() => window.location.reload(), 15000);
+                    if (data.status === 'error') {
+                        status.textContent = 'Error: ' + data.message;
+                        status.style.color = 'var(--error, #dc3545)';
+                        btn.disabled = false;
+                        btnText.textContent = 'Update Server';
+                    } else {
+                        status.textContent = data.message + ' Page will reload in 15 seconds...';
+                        status.style.color = 'var(--success, #28a745)';
+                        setTimeout(() => window.location.reload(), 15000);
+                    }
                 })
                 .catch(err => {
                     status.textContent = 'Error: ' + err;
+                    status.style.color = 'var(--error, #dc3545)';
                     btn.disabled = false;
                     btnText.textContent = 'Update Server';
                 });

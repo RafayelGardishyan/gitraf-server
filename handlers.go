@@ -1042,8 +1042,11 @@ func (s *Server) handleGenerateSSHKey(w http.ResponseWriter, r *http.Request) {
 
 // handleUpdateServer updates the gitraf-server binary (tailnet only)
 func (s *Server) handleUpdateServer(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
 	if !s.isTailnetRequest(r) {
-		http.Error(w, "Access denied - Tailnet required", http.StatusForbidden)
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"status":"error","message":"Access denied - Tailnet required"}`))
 		return
 	}
 
@@ -1056,7 +1059,8 @@ func (s *Server) handleUpdateServer(w http.ResponseWriter, r *http.Request) {
 	cmd.Dir = serverDir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		log.Printf("Error pulling updates: %v - %s", err, string(output))
-		http.Error(w, "Failed to pull updates: "+string(output), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"status":"error","message":"Failed to pull updates: %s"}`, strings.ReplaceAll(string(output), `"`, `\"`))))
 		return
 	}
 
@@ -1066,7 +1070,8 @@ func (s *Server) handleUpdateServer(w http.ResponseWriter, r *http.Request) {
 	cmd.Dir = serverDir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		log.Printf("Error building: %v - %s", err, string(output))
-		http.Error(w, "Failed to build: "+string(output), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"status":"error","message":"Failed to build: %s"}`, strings.ReplaceAll(string(output), `"`, `\"`))))
 		return
 	}
 
