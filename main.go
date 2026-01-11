@@ -22,6 +22,7 @@ func main() {
 	publicURL := flag.String("public-url", "", "Public URL for HTTPS clone")
 	tailnetURL := flag.String("tailnet-url", "", "Tailnet URL for SSH clone")
 	templatesPath := flag.String("templates", "", "Path to templates directory (defaults to ./templates)")
+	pagesBaseURL := flag.String("pages-base-url", "", "Base URL for gitraf-pages (e.g., example.com for {repo}.example.com)")
 	flag.Parse()
 
 	// Check environment variables as fallbacks
@@ -36,6 +37,9 @@ func main() {
 	}
 	if *tailnetURL == "" {
 		*tailnetURL = os.Getenv("GITRAF_TAILNET_URL")
+	}
+	if *pagesBaseURL == "" {
+		*pagesBaseURL = os.Getenv("GITRAF_PAGES_BASE_URL")
 	}
 
 	// Validate required parameters
@@ -71,7 +75,7 @@ func main() {
 	}
 
 	// Create server
-	server, err := NewServer(*reposPath, *publicURL, *tailnetURL, *templatesPath)
+	server, err := NewServer(*reposPath, *publicURL, *tailnetURL, *templatesPath, *pagesBaseURL)
 	if err != nil {
 		log.Fatalf("Error creating server: %v", err)
 	}
@@ -119,6 +123,9 @@ func main() {
 	}
 	if *tailnetURL != "" {
 		log.Printf("Tailnet URL: %s", *tailnetURL)
+	}
+	if *pagesBaseURL != "" {
+		log.Printf("Pages base URL: %s", *pagesBaseURL)
 	}
 
 	// Start TLS server if configured

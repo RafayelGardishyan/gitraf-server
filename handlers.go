@@ -21,15 +21,16 @@ import (
 
 // Server holds the application state
 type Server struct {
-	reposPath  string
-	publicURL  string
-	tailnetURL string
-	templates  *template.Template
-	markdown   goldmark.Markdown
+	reposPath    string
+	publicURL    string
+	tailnetURL   string
+	pagesBaseURL string
+	templates    *template.Template
+	markdown     goldmark.Markdown
 }
 
 // NewServer creates a new Server instance
-func NewServer(reposPath, publicURL, tailnetURL, templatesPath string) (*Server, error) {
+func NewServer(reposPath, publicURL, tailnetURL, templatesPath, pagesBaseURL string) (*Server, error) {
 	// Parse all templates
 	tmpl, err := template.New("").Funcs(template.FuncMap{
 		"truncate": func(s string, n int) string {
@@ -122,11 +123,12 @@ func NewServer(reposPath, publicURL, tailnetURL, templatesPath string) (*Server,
 	)
 
 	return &Server{
-		reposPath:  reposPath,
-		publicURL:  publicURL,
-		tailnetURL: tailnetURL,
-		templates:  tmpl,
-		markdown:   md,
+		reposPath:    reposPath,
+		publicURL:    publicURL,
+		tailnetURL:   tailnetURL,
+		pagesBaseURL: pagesBaseURL,
+		templates:    tmpl,
+		markdown:     md,
 	}, nil
 }
 
