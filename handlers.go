@@ -1040,6 +1040,115 @@ func (s *Server) handleGenerateSSHKey(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, referer, http.StatusFound)
 }
 
+// handleAdminSettings shows server-level settings (tailnet only)
+func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
+	if !s.isTailnetRequest(r) {
+		http.Error(w, "Access denied - Tailnet required", http.StatusForbidden)
+		return
+	}
+
+	// Get SSH key info
+	sshKeyExists := sshKeyExists()
+	var sshPublicKey, sshKeyFingerprint string
+	if sshKeyExists {
+		sshPublicKey, _ = getSSHPublicKey()
+		sshKeyFingerprint, _ = getSSHKeyFingerprint()
+	}
+
+	// Read LFS config (server-level)
+	lfsEnabled := false
+	lfsEndpoint := ""
+	lfsBucket := ""
+	lfsRegion := "auto"
+	lfsAccessKey := ""
+	lfsSecretKey := ""
+	lfsConfigPath := filepath.Join(filepath.Dir(s.reposPath), "lfs-config.json")
+	if data, err := os.ReadFile(lfsConfigPath); err == nil {
+		var lfsConfig map[string]interface{}
+		if json.Unmarshal(data, &lfsConfig) == nil {
+			lfsEnabled = true
+			if v, ok := lfsConfig["endpoint"].(string); ok {
+				lfsEndpoint = v
+			}
+			if v, ok := lfsConfig["bucket"].(string); ok {
+				lfsBucket = v
+			}
+			if v, ok := lfsConfig["region"].(string); ok {
+				lfsRegion = v
+			}
+			if v, ok := lfsConfig["access_key"].(string); ok {
+				lfsAccessKey = v
+			}
+			if v, ok := lfsConfig["secret_key"].(string); ok {
+				lfsSecretKey = v
+			}
+		}
+	}
+
+	// Read Backup config (server-level)
+	backupEnabled := false
+	backupEndpoint := ""
+	backupBucket := ""
+	backupRegion := "auto"
+	backupAccessKey := ""
+	backupSecretKey := ""
+	backupSchedule := "daily"
+	backupConfigPath := filepath.Join(filepath.Dir(s.reposPath), "backup-config.json")
+	if data, err := os.ReadFile(backupConfigPath); err == nil {
+		var backupConfig map[string]interface{}
+		if json.Unmarshal(data, &backupConfig) == nil {
+			if v, ok := backupConfig["enabled"].(bool); ok {
+				backupEnabled = v
+			}
+			if v, ok := backupConfig["endpoint"].(string); ok {
+				backupEndpoint = v
+			}
+			if v, ok := backupConfig["bucket"].(string); ok {
+				backupBucket = v
+			}
+			if v, ok := backupConfig["region"].(string); ok {
+				backupRegion = v
+			}
+			if v, ok := backupConfig["access_key"].(string); ok {
+				backupAccessKey = v
+			}
+			if v, ok := backupConfig["secret_key"].(string); ok {
+				backupSecretKey = v
+			}
+			if v, ok := backupConfig["schedule"].(string); ok {
+				backupSchedule = v
+			}
+		}
+	}
+
+	data := map[string]interface{}{
+		"Title":             "Server Settings",
+		"IsTailnet":         true,
+		"PublicURL":         s.publicURL,
+		"TailnetURL":        s.tailnetURL,
+		"SSHKeyExists":      sshKeyExists,
+		"SSHPublicKey":      sshPublicKey,
+		"SSHKeyFingerprint": sshKeyFingerprint,
+		// LFS config
+		"LFSEnabled":   lfsEnabled,
+		"LFSEndpoint":  lfsEndpoint,
+		"LFSBucket":    lfsBucket,
+		"LFSRegion":    lfsRegion,
+		"LFSAccessKey": lfsAccessKey,
+		"LFSSecretKey": lfsSecretKey,
+		// Backup config
+		"BackupEnabled":   backupEnabled,
+		"BackupEndpoint":  backupEndpoint,
+		"BackupBucket":    backupBucket,
+		"BackupRegion":    backupRegion,
+		"BackupAccessKey": backupAccessKey,
+		"BackupSecretKey": backupSecretKey,
+		"BackupSchedule":  backupSchedule,
+	}
+
+	s.renderTemplate(w, "admin.html", data)
+}
+
 // handleUpdateServer updates the gitraf-server binary (tailnet only)
 func (s *Server) handleUpdateServer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")

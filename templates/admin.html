@@ -1,0 +1,315 @@
+{{template "head" .}}
+
+<main class="container">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <h1 style="font-size: 20px;">
+            <a href="/" style="color: var(--text-secondary);">repos</a>
+            <span style="color: var(--text-secondary); margin: 0 4px;">/</span>
+            <span>Server Settings</span>
+        </h1>
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">
+        Server-level configuration that applies to all repositories.
+        <br><small>Only accessible via Tailscale network.</small>
+    </p>
+
+    <!-- Git LFS Storage Configuration -->
+    <div class="card" style="padding: 24px; margin-bottom: 16px;">
+        <h2 style="font-size: 18px; margin-bottom: 8px;">Git LFS Storage</h2>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+            Configure S3-compatible storage for Git Large File Storage (LFS) objects
+        </p>
+
+        <form method="POST" action="/admin/lfs-config" id="lfs-form">
+            <div style="margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                    <input type="checkbox" name="lfs_enabled" id="lfs_enabled" {{if .LFSEnabled}}checked{{end}}
+                           onchange="document.getElementById('lfs-config').style.display = this.checked ? 'block' : 'none'">
+                    <span style="font-weight: 500;">Enable LFS Storage</span>
+                </label>
+            </div>
+
+            <div id="lfs-config" style="{{if not .LFSEnabled}}display: none;{{end}} padding-left: 24px; border-left: 2px solid var(--border);">
+                <div style="margin-bottom: 16px;">
+                    <label for="lfs_endpoint" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        S3 Endpoint
+                    </label>
+                    <input type="text" id="lfs_endpoint" name="lfs_endpoint" value="{{.LFSEndpoint}}"
+                           placeholder="https://s3.us-east-1.amazonaws.com"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                        S3-compatible endpoint URL (e.g., Cloudflare R2, MinIO, AWS S3)
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="lfs_bucket" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Bucket Name
+                    </label>
+                    <input type="text" id="lfs_bucket" name="lfs_bucket" value="{{.LFSBucket}}"
+                           placeholder="gitraf-lfs"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="lfs_region" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Region
+                    </label>
+                    <input type="text" id="lfs_region" name="lfs_region" value="{{.LFSRegion}}"
+                           placeholder="auto"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                        AWS region or "auto" for S3-compatible services
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="lfs_access_key" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Access Key ID
+                    </label>
+                    <input type="text" id="lfs_access_key" name="lfs_access_key" value="{{.LFSAccessKey}}"
+                           placeholder="AKIAIOSFODNN7EXAMPLE"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="lfs_secret_key" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Secret Access Key
+                    </label>
+                    <input type="password" id="lfs_secret_key" name="lfs_secret_key" value="{{.LFSSecretKey}}"
+                           placeholder="••••••••••••••••"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                        Your secret key is stored securely on the server
+                    </p>
+                </div>
+
+                <div style="margin-top: 20px; padding: 12px; background: var(--bg-secondary); border-radius: 6px;">
+                    <p style="font-size: 13px; color: var(--text-secondary);">
+                        <strong style="color: var(--text);">Note:</strong> LFS storage is shared across all repositories on this server.
+                        Objects are stored with the path format: <code>{repo}/{oid[0:2]}/{oid[2:4]}/{oid}</code>
+                    </p>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" style="padding: 8px 16px; background: var(--link); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                    Save LFS Configuration
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- S3 Backup Configuration -->
+    <div class="card" style="padding: 24px; margin-bottom: 16px;">
+        <h2 style="font-size: 18px; margin-bottom: 8px;">S3 Backup Storage</h2>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+            Configure S3-compatible storage for server backups
+        </p>
+
+        <form method="POST" action="/admin/backup-config" id="backup-form">
+            <div style="margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                    <input type="checkbox" name="backup_enabled" id="backup_enabled" {{if .BackupEnabled}}checked{{end}}
+                           onchange="document.getElementById('backup-config').style.display = this.checked ? 'block' : 'none'">
+                    <span style="font-weight: 500;">Enable S3 Backups</span>
+                </label>
+            </div>
+
+            <div id="backup-config" style="{{if not .BackupEnabled}}display: none;{{end}} padding-left: 24px; border-left: 2px solid var(--border);">
+                <div style="margin-bottom: 16px;">
+                    <label for="backup_endpoint" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        S3 Endpoint
+                    </label>
+                    <input type="text" id="backup_endpoint" name="backup_endpoint" value="{{.BackupEndpoint}}"
+                           placeholder="https://s3.us-east-1.amazonaws.com"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                        S3-compatible endpoint URL for backup storage
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="backup_bucket" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Bucket Name
+                    </label>
+                    <input type="text" id="backup_bucket" name="backup_bucket" value="{{.BackupBucket}}"
+                           placeholder="gitraf-backups"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="backup_region" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Region
+                    </label>
+                    <input type="text" id="backup_region" name="backup_region" value="{{.BackupRegion}}"
+                           placeholder="auto"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                        AWS region or "auto" for S3-compatible services
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="backup_access_key" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Access Key ID
+                    </label>
+                    <input type="text" id="backup_access_key" name="backup_access_key" value="{{.BackupAccessKey}}"
+                           placeholder="AKIAIOSFODNN7EXAMPLE"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="backup_secret_key" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Secret Access Key
+                    </label>
+                    <input type="password" id="backup_secret_key" name="backup_secret_key" value="{{.BackupSecretKey}}"
+                           placeholder="••••••••••••••••"
+                           style="width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px; font-family: monospace;">
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;">
+                        Your secret key is stored securely on the server
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label for="backup_schedule" style="display: block; font-weight: 500; margin-bottom: 8px;">
+                        Backup Schedule
+                    </label>
+                    <select name="backup_schedule" id="backup_schedule"
+                            style="padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 14px;">
+                        <option value="daily" {{if eq .BackupSchedule "daily"}}selected{{end}}>Daily</option>
+                        <option value="weekly" {{if eq .BackupSchedule "weekly"}}selected{{end}}>Weekly</option>
+                        <option value="manual" {{if eq .BackupSchedule "manual"}}selected{{end}}>Manual only</option>
+                    </select>
+                </div>
+
+                <div style="margin-top: 20px; padding: 12px; background: var(--bg-secondary); border-radius: 6px;">
+                    <p style="font-size: 13px; color: var(--text-secondary);">
+                        <strong style="color: var(--text);">Note:</strong> Backups include all repository data.
+                        Use <code>gitraf backup now</code> to trigger a manual backup.
+                    </p>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" style="padding: 8px 16px; background: var(--link); color: white; border: none; border-radius: 6px; font-size: 14px; cursor: pointer;">
+                    Save Backup Configuration
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- SSH Key Management -->
+    <div class="card" style="padding: 24px; margin-bottom: 16px;">
+        <h2 style="font-size: 18px; margin-bottom: 8px;">SSH Key for GitHub Mirroring</h2>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+            Server SSH key used to push to GitHub mirrors
+        </p>
+
+        {{if .SSHKeyExists}}
+        <div style="margin-bottom: 12px;">
+            <textarea readonly id="ssh-public-key"
+                      style="width: 100%; height: 80px; padding: 12px; background: var(--code-bg);
+                             border: 1px solid var(--border); border-radius: 6px;
+                             font-family: ui-monospace, monospace; font-size: 11px; resize: none;
+                             color: var(--text);">{{.SSHPublicKey}}</textarea>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button type="button" onclick="navigator.clipboard.writeText(document.getElementById('ssh-public-key').value).then(() => { this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy to clipboard', 2000); })"
+                    style="padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--border);
+                           border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text);">
+                Copy to clipboard
+            </button>
+            <a href="https://github.com/settings/keys" target="_blank" style="font-size: 13px;">
+                Add to GitHub SSH keys
+            </a>
+        </div>
+        {{if .SSHKeyFingerprint}}
+        <p style="margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
+            <strong>Fingerprint:</strong> <code style="font-size: 11px;">{{.SSHKeyFingerprint}}</code>
+        </p>
+        {{end}}
+        {{else}}
+        <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 13px;">
+            No SSH key has been generated yet. Generate one to enable GitHub mirroring.
+        </p>
+        <button type="button" onclick="generateSSHKey()"
+                style="padding: 8px 16px; background: var(--link); color: white;
+                       border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">
+            Generate SSH Key
+        </button>
+        <script>
+        function generateSSHKey() {
+            if (confirm('Generate a new SSH key for GitHub mirroring?')) {
+                fetch('/admin/generate-ssh-key', { method: 'POST' })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            response.text().then(text => alert('Error: ' + text));
+                        }
+                    })
+                    .catch(err => alert('Error: ' + err));
+            }
+        }
+        </script>
+        {{end}}
+    </div>
+
+    <!-- Server Administration -->
+    <div class="card" style="padding: 24px;">
+        <h2 style="font-size: 18px; margin-bottom: 8px;">Server Update</h2>
+        <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+            Update the gitraf-server to the latest version
+        </p>
+
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button type="button" onclick="updateServer()" id="update-btn"
+                    style="padding: 10px 20px; background: var(--bg-secondary); border: 1px solid var(--border);
+                           border-radius: 6px; font-size: 14px; cursor: pointer; color: var(--text);">
+                <span id="update-btn-text">Update Server</span>
+            </button>
+            <span id="update-status" style="font-size: 13px; color: var(--text-secondary);"></span>
+        </div>
+
+        <script>
+        function updateServer() {
+            if (!confirm('Update gitraf-server to the latest version? The server will restart.')) {
+                return;
+            }
+
+            const btn = document.getElementById('update-btn');
+            const btnText = document.getElementById('update-btn-text');
+            const status = document.getElementById('update-status');
+
+            btn.disabled = true;
+            btnText.textContent = 'Updating...';
+            status.textContent = 'Downloading latest version...';
+
+            fetch('/admin/update-server', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                        status.textContent = 'Error: ' + data.message;
+                        status.style.color = 'var(--error, #dc3545)';
+                        btn.disabled = false;
+                        btnText.textContent = 'Update Server';
+                    } else {
+                        status.textContent = data.message + ' Page will reload in 15 seconds...';
+                        status.style.color = 'var(--success, #28a745)';
+                        setTimeout(() => window.location.reload(), 15000);
+                    }
+                })
+                .catch(err => {
+                    status.textContent = 'Error: ' + err;
+                    status.style.color = 'var(--error, #dc3545)';
+                    btn.disabled = false;
+                    btnText.textContent = 'Update Server';
+                });
+        }
+        </script>
+    </div>
+</main>
+
+{{template "footer" .}}

@@ -100,13 +100,29 @@ location / {
 
 ## Web Interface Features
 
-### Repository Settings (Tailnet Only)
+### Settings Architecture
 
-Access repository settings at `/{repo}/settings`:
+gitraf separates settings into two categories:
+
+1. **Repository Settings** (`/{repo}/settings`) - Per-repository configuration
+2. **Server Admin Settings** (`/admin/settings`) - Server-wide configuration (Tailnet only)
+
+#### Repository Settings
+
+Access at `/{repo}/settings` (Tailnet required for changes):
 
 - **General**: Description and visibility (public/private)
 - **Pages**: Enable/disable static site hosting, configure branch, build command, and output directory
-- **GitHub Mirror**: Configure automatic syncing to GitHub
+- **GitHub Mirror**: Configure automatic syncing to GitHub with SSH key management
+
+#### Server Admin Settings
+
+Access at `/admin/settings` (Tailnet only):
+
+- **LFS Storage**: Configure S3-compatible storage for Git LFS objects
+- **S3 Backup**: Configure automated R2/S3 backup with schedule settings
+- **SSH Key Management**: Generate and view SSH keys for GitHub mirroring
+- **Server Update**: One-click update to latest version
 
 ### Submodule Display
 
@@ -116,18 +132,42 @@ Repositories with submodules show:
 - Link to external repository (GitHub, GitLab, etc.)
 - Detailed view with URL, branch, and status
 
-### SSH Key Management
+### Configuration Files
 
-Generate and manage SSH keys for GitHub mirroring:
-- Generate Ed25519 keys from the settings page
-- View and copy public key
-- Add to GitHub for mirroring access
+gitraf-server stores configuration in the parent directory of the repos path:
 
-### Server Administration
+| File | Description |
+|------|-------------|
+| `lfs-config.json` | LFS S3 storage configuration |
+| `backup-config.json` | R2/S3 backup configuration |
+| `ssh/id_ed25519` | SSH private key for GitHub mirroring |
+| `ssh/id_ed25519.pub` | SSH public key |
 
-From any repository settings page:
-- One-click update to latest version
-- Automatic service restart
+#### LFS Config Schema (`lfs-config.json`)
+
+```json
+{
+  "enabled": true,
+  "endpoint": "https://s3.us-west-2.amazonaws.com",
+  "bucket": "my-lfs-bucket",
+  "region": "us-west-2",
+  "access_key": "AKIA...",
+  "secret_key": "..."
+}
+```
+
+#### Backup Config Schema (`backup-config.json`)
+
+```json
+{
+  "enabled": true,
+  "endpoint": "https://xxx.r2.cloudflarestorage.com",
+  "bucket": "gitraf-backup",
+  "access_key": "...",
+  "secret_key": "...",
+  "schedule": "0 3 * * *"
+}
+```
 
 ## License
 

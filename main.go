@@ -112,6 +112,7 @@ func main() {
 	r.Post("/{repo}/settings", server.handleRepoSettingsPost)
 
 	// Admin routes (tailnet only)
+	r.Get("/admin/settings", server.handleAdminSettings)
 	r.Post("/admin/generate-ssh-key", server.handleGenerateSSHKey)
 	r.Post("/admin/update-server", server.handleUpdateServer)
 	r.Post("/admin/lfs-config", server.handleLFSConfigPost)
